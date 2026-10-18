@@ -1,0 +1,77 @@
+name: Packages
+
+# Builds .deb (Ubuntu 24.04) and .rpm (Fedora 42) packages when a tag vX.Y.Z is pushed
+# and attaches them to a GitHub release.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  deb:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libssl-dev libgtk-4-dev libadwaita-1-dev libmpv-dev dpkg-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build the .deb
+        run: |
+          cargo install --locked cargo-deb
+          cargo deb -p harv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: harv-deb
+          path: target/debian/*.deb
+          if-no-files-found: error
+
+  rpm:
+    runs-on: ubuntu-24.04
+    container: fedora:42
+    steps:
+      - name: Install build dependencies
+        run: |
+          dnf install -y gcc gcc-c++ make git tar gzip curl pkgconf-pkg-config rpm-build openssl-devel gtk4-devel libadwaita-devel mpv-devel
+          curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: Build the .rpm
+        run: |
+          cargo install --locked cargo-generate-rpm
+          cargo build --release -p harv
+          cargo generate-rpm -p apps/harv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: harv-rpm
+          path: target/generate-rpm/*.rpm
+          if-no-files-found: error
+
+  release:
+    needs: [deb, rpm]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the tag matches the crate version
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' apps/harv/Cargo.toml | head -1)
+          [ "v$version" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME does not match apps/harv version $version"; exit 1; }
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "harv $GITHUB_REF_NAME" --generate-notes --prerelease

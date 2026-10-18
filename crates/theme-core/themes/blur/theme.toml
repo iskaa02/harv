@@ -1,0 +1,87 @@
+# The built-in default: exactly the look harv shipped with before themes existed.
+# Every key must be present here — other themes `extends = "blur"` and override only what they change.
+# Reference: docs/THEMING_DESIGN.md
+
+[meta]
+id = "blur"
+name = "Blur"
+scheme = "dark"
+
+[colors]
+bg = "#121214"
+sidebar = "#0d0d0f"
+raise = "#1b1b1f"
+hover = "#232328"
+fg = "#ffffff"
+dim = "#9a9aa0"
+accent = "cover"            # "cover" = follow the playing artwork, or a fixed colour
+accent_on = "#000000"       # text/icons on the accent
+play_bg = "#ffffff"
+play_fg = "#000000"
+bar_bg = "#1b1b1f"          # bottom player bar
+bar_fg = "#ffffff"
+toast_bg = "#2a2a30"
+toast_fg = "#ffffff"
+np_fg = "#ffffff"           # full-screen now-playing controls (they sit on the dark cover backdrop)
+np_on = "#000000"
+
+[colors_alt]   # the other scheme
+bg = "#F5F5F7"
+sidebar = "#EBEBEF"
+raise = "#FFFFFF"
+hover = "#E3E3E9"
+fg = "#1B1B1F"
+dim = "#6B6B73"
+accent = "cover"
+accent_on = "#FFFFFF"
+play_bg = "#1B1B1F"
+play_fg = "#FFFFFF"
+bar_bg = "#FFFFFF"
+bar_fg = "#1B1B1F"
+toast_bg = "#2A2A30"
+toast_fg = "#FFFFFF"
+np_fg = "#FFFFFF"
+np_on = "#000000"
+
+[fonts]
+ui = "Inter"
+mono = "Inter"              # used for small labels and times; same as ui in this theme
+fallbacks = ["Noto Sans", "Noto Sans Arabic", "Noto Sans CJK JP", "Noto Color Emoji"]
+
+[shape]                     # corner radii, px
+xs = 6                      # menu items
+sm = 8                      # skeletons, mini-bar art, history items
+md = 10                     # sidebar rows
+lg = 12                     # track rows, suggestion list
+input = 14                  # search field, boxed lists, popovers
+xl = 16                     # cards
+control = 9999              # chips, pill buttons, toasts (9999 = fully round)
+cover = 10                  # cover art
+hero = 12                   # big header art
+
+[metrics]
+sidebar_w = 220
+track_row_h = 58
+label_tracking = 1.4        # px, sidebar section labels
+
+[effects]
+ambient = 1.0               # cover-coloured wash behind pages (0 = off)
+bar_tint = 1.0              # cover-coloured tint on the player bar (0 = off)
+
+[words]
+home = "Home"
+search = "Search"
+charts = "Charts"
+section_library = "LIBRARY"
+favorites = "Favorites"
+recent = "Recently played"
+most_played = "Most played"
+playlists = "Playlists"
+following = "Following"
+downloads = "Downloads"
+preferences = "Preferences"
+queue = "Queue"
+section_playlists = "PLAYLISTS"
+new_playlist = "New playlist"
+now = "Now playing"
+playlist_sub = "{n} songs"

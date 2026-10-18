@@ -1,0 +1,205 @@
+# Harv — the app's own look: neutral ink / paper surfaces that take their colour from the accent setting (artwork by default), Red Hat Display/Mono, tight 4–8 px corners.
+# Mixer-style layout (right panel, in-shell now-playing, table track lists).
+
+[meta]
+id = "harv"
+name = "Harv"
+extends = "blur"
+scheme = "dark"
+
+[colors]
+bg = "#121214"
+sidebar = "#0C0C0F"
+raise = "#1B1B1F"
+hover = "#25252A"
+fg = "#F1F0EE"
+dim = "#A1A1A8"
+accent = "cover"
+accent_on = "#0C0C0F"
+play_bg = "#F1F0EE"
+play_fg = "#0C0C0F"
+bar_bg = "#1B1B1F"
+bar_fg = "#F1F0EE"
+toast_bg = "#25252A"
+toast_fg = "#F1F0EE"
+np_fg = "#F1F0EE"
+np_on = "#0C0C0F"
+
+[colors_alt]   # the other scheme
+bg = "#F7F7F5"
+sidebar = "#EDEDEA"
+raise = "#FFFFFF"
+hover = "#E4E4E0"
+fg = "#17171A"
+dim = "#68686E"
+accent = "cover"
+accent_on = "#FFFFFF"
+play_bg = "#17171A"
+play_fg = "#FFFFFF"
+bar_bg = "#1B1B1F"
+bar_fg = "#F1F0EE"
+toast_bg = "#25252A"
+toast_fg = "#F1F0EE"
+np_fg = "#17171A"
+np_on = "#F7F7F5"
+
+[fonts]
+ui = "Red Hat Display"
+mono = "Red Hat Mono"
+
+[shape]
+xs = 4
+sm = 4
+md = 6
+lg = 8
+input = 8
+xl = 8
+control = 6
+cover = 4
+hero = 6
+
+[metrics]
+sidebar_w = 240
+track_row_h = 52
+label_tracking = 0.7
+
+[effects]
+ambient = 0.0
+bar_tint = 0.0
+
+# --- shell ---
+[shell.sidebar]
+style = "custom"
+items = ["home", "charts", "favorites", "recent", "most_played", "downloads", "following"]
+item_shape = "rounded"
+brand = false
+search_box = true
+playlist_art = "square"
+playlists_title = "section_playlists"
+new_playlist = true
+prefs = true
+
+# --- bottom bar: 80 px dark bar, cover 48, accent circle play, bar seek + times, volume ---
+[shell.bottom_bar]
+style = "parts"
+show = "always"
+height = 80
+
+[[shell.bottom_bar.parts]]
+c = "cover"
+size = 48
+
+[[shell.bottom_bar.parts]]
+c = "title"
+width = 190
+
+[[shell.bottom_bar.parts]]
+c = "transport"
+buttons = ["shuffle", "prev", "play", "next", "repeat", "radio"]
+play = "circle"
+play_size = 44
+size = 28
+
+[[shell.bottom_bar.parts]]
+c = "seek"
+style = "bar"
+times = true
+
+[[shell.bottom_bar.parts]]
+c = "volume"
+width = 90
+
+# --- page.playlist ---
+[page.playlist]
+right_w = 290
+main = [
+  { c = "hero", cover = 170, meta = ["crossfade"] },
+  { c = "track-list", style = "table", columns = ["index", "title", "artist", "time"], cover = 36 },
+]
+right = [
+  { c = "text", text = "UP NEXT", class = "panel-label" },
+  { c = "queue-list", limit = 4 },
+  { c = "column", vgrow = true, valign = "end", children = [
+    { c = "text", text = "LYRICS", class = "panel-label" },
+    { c = "lyrics-teaser", lines = 2 },
+  ] },
+]
+
+# --- page.library ---
+[page.library]
+main = [
+  { c = "cover-grid", shape = "square", columns = 4, cover = 180, badge = "none", heading = true },
+]
+
+# --- page.search ---
+[[page.search.main]]
+c = "search"
+box = "rect"
+box_width = 720
+hint = "esc"
+placeholder = "Songs, lyrics, artists, playlists"
+chips = ["all", "songs", "lyrics", "artists", "playlists"]
+results = "columns"
+side = "playlists"
+side_w = 380
+hit = "row"
+
+# --- page.now ---
+[shell.now_playing]
+host = "page"
+
+[page.now]
+right_w = 0
+
+[[page.now.main]]
+c = "row"
+gap = 48
+margin_top = 36
+margin_bottom = 28
+margin_start = 44
+margin_end = 44
+
+[[page.now.main.children]]
+c = "column"
+width = 400
+
+[[page.now.main.children.children]]
+c = "now-cover"
+size = 400
+radius = 6
+shadow = true
+
+[[page.now.main.children.children]]
+c = "now-title"
+size = 32
+sub_size = 16
+margin_top = 22
+
+[[page.now.main.children]]
+c = "column"
+grow = true
+
+[[page.now.main.children.children]]
+c = "tabs"
+labels = ["Lyrics", "Credits", "Queue"]
+vgrow = true
+
+[[page.now.main.children.children.children]]
+c = "lyrics"
+colors = "np"
+font = 30
+active_font = 38
+gap = 30
+pad = 0
+margin_top = 28
+
+[[page.now.main.children.children.children]]
+c = "credits"
+
+[[page.now.main.children.children.children]]
+c = "queue-list"
+style = "rows"
+
+[[page.now.main.children.children]]
+c = "next-card"
+margin_top = 14

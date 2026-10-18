@@ -1,0 +1,239 @@
+# Lagoon — deep teal-green water by night, pale sea-glass by day; sea-green accent, Figtree, pebble-round 14–28 px corners, cover grid library, waveform seek.
+
+[meta]
+id = "lagoon"
+name = "Lagoon"
+extends = "blur"
+scheme = "dark"
+
+[colors]
+bg = "#0A1514"
+sidebar = "#071110"
+raise = "#112220"
+hover = "#193230"
+fg = "#E2F3EE"
+dim = "#7FA39B"
+accent = "#3DDBB0"
+accent_on = "#04120E"
+play_bg = "#3DDBB0"
+play_fg = "#04120E"
+bar_bg = "#0F1E1C"
+bar_fg = "#E2F3EE"
+toast_bg = "#193230"
+toast_fg = "#E2F3EE"
+np_fg = "#E2F3EE"
+np_on = "#04120E"
+
+[colors_alt]   # the other scheme
+bg = "#EDF6F2"
+sidebar = "#DFEEE8"
+raise = "#FBFEFD"
+hover = "#D0E6DE"
+fg = "#0B2622"
+dim = "#4F706A"
+accent = "#0A8A6C"
+accent_on = "#FFFFFF"
+play_bg = "#0A8A6C"
+play_fg = "#FFFFFF"
+bar_bg = "#FBFEFD"
+bar_fg = "#0B2622"
+toast_bg = "#0F2B27"
+toast_fg = "#E2F3EE"
+np_fg = "#0B2622"
+np_on = "#E2F3EE"
+
+[fonts]
+ui = "Figtree"
+mono = "Noto Sans Mono"
+
+[shape]
+xs = 8
+sm = 8
+md = 14
+lg = 18
+input = 20
+xl = 24
+control = 14
+cover = 16
+hero = 28
+
+[metrics]
+sidebar_w = 210
+track_row_h = 52
+label_tracking = 0.8
+
+[effects]
+ambient = 0.0
+bar_tint = 0.0
+
+[words]
+home = "Now"
+playlists = "Library"
+section_playlists = "COLLECTIONS"
+section_library = "LIBRARY"
+favorites = "Saved"
+now = "Now"
+playlist_sub = ""
+
+# --- shell ---
+[shell.sidebar]
+style = "custom"
+items = ["now", "search", "playlists", "favorites", "recent", "downloads"]
+item_shape = "rounded"
+brand = false
+playlist_art = "square"
+playlists_title = "section_playlists"
+new_playlist = false
+prefs = true
+
+# --- bottom bar: 72 px, cover 44 (r10), sea-green circle play, thin seek + times; not on the Now page ---
+[shell.bottom_bar]
+style = "parts"
+show = "except-now"
+height = 72
+
+[[shell.bottom_bar.parts]]
+c = "cover"
+size = 44
+
+[[shell.bottom_bar.parts]]
+c = "title"
+width = 180
+
+[[shell.bottom_bar.parts]]
+c = "transport"
+buttons = ["prev", "play", "next", "radio"]
+play = "circle"
+play_size = 42
+size = 26
+
+[[shell.bottom_bar.parts]]
+c = "seek"
+style = "thin"
+times = true
+
+# --- page.playlist ---
+[page.playlist]
+main = [
+  { c = "hero", cover = 230, meta = ["crossfade"] },
+  { c = "track-list", style = "rows", columns = ["index", "title", "artist", "time"] },
+]
+
+# --- page.library ---
+[page.library]
+main = [
+  { c = "hero", filters = ["all", "saved", "offline", "sort"], sort = "recent" },
+  { c = "cover-grid", shape = "square", columns = 5, cover = 186, badge = "index" },
+]
+
+# --- page.search ---
+[[page.search.main]]
+c = "search"
+box = "rect"
+box_width = 640
+placeholder = "Lyrics, songs, artists"
+chips = ["lyrics", "songs", "artists"]
+counts = true
+results = "columns"
+side = "artists"
+side_w = 300
+hit = "card"
+
+# --- page.now ---
+[shell.now_playing]
+host = "page"
+
+[page.now]
+right_w = 320
+
+[[page.now.main]]
+c = "column"
+grow = true
+margin_top = 28
+margin_start = 32
+margin_end = 32
+
+[[page.now.main.children]]
+c = "now-counter"
+
+[[page.now.main.children]]
+c = "row"
+gap = 22
+margin_top = 14
+
+[[page.now.main.children.children]]
+c = "now-cover"
+size = 230
+radius = 24
+shadow = true
+
+[[page.now.main.children.children]]
+c = "column"
+grow = true
+valign = "center"
+
+[[page.now.main.children.children.children]]
+c = "now-title"
+size = 36
+sub_size = 16
+
+[[page.now.main.children.children.children]]
+c = "seek"
+style = "waveform"
+bar_width = 4
+bar_gap = 3
+wave_height = 48
+margin_top = 22
+
+[[page.now.main.children.children.children]]
+c = "transport"
+class = "nowp-transport"
+size = 20
+play_size = 56
+margin_top = 16
+
+[[page.now.main.children]]
+c = "text"
+text = "TRACKLIST"
+class = "nowp-section"
+margin_top = 28
+
+[[page.now.main.children]]
+c = "queue-list"
+style = "rows"
+vgrow = true
+
+[[page.now.right]]
+c = "text"
+text = "LYRICS · SYNCED"
+class = "nowp-section nowp-accent"
+margin_top = 24
+margin_start = 22
+margin_end = 22
+
+[[page.now.right]]
+c = "lyrics"
+font = 18
+active_font = 18
+gap = 14
+pad = 0
+vgrow = true
+margin_top = 18
+margin_start = 22
+margin_end = 22
+
+[[page.now.right]]
+c = "text"
+text = "QUEUE"
+class = "nowp-section"
+margin_top = 12
+margin_start = 22
+margin_end = 22
+
+[[page.now.right]]
+c = "queue-list"
+style = "rows"
+limit = 4
+margin_start = 22
+margin_end = 22
+margin_bottom = 20

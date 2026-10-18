@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Harv
+GenericName=Music Player
+Comment=GTK4 YouTube Music player with synced lyrics
+Exec=harv
+Icon=dev.harv.Harv
+Terminal=false
+Categories=AudioVideo;Audio;Player;Music;GTK;
+Keywords=music;lyrics;youtube;player;
+StartupNotify=true
+StartupWMClass=dev.harv.Harv

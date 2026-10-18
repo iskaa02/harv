@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+members = ["crates/lyrics-core", "crates/autoeq", "crates/ytm-core", "crates/player-core", "crates/store-core", "crates/theme-core", "crates/lyrics-net", "widgets/lyrics-view", "widgets/seek-widgets", "apps/harv"]
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+
+# Fast edit-compile-run loop: light optimisation for our code, full for dependencies
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+# ytmapi-rs 0.3.3 + one fix: song search rows whose album run has no browseId failed the whole search (vendor/ytmapi-rs)
+[patch.crates-io]
+ytmapi-rs = { path = "vendor/ytmapi-rs" }

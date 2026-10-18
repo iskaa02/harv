@@ -1,0 +1,36 @@
+/* --- search: themed search page (components/search.rs). Generic, token-driven structure; each theme's look lives in
+   crates/theme-core/themes/<id>/style.css under its search marker. */
+
+.s-box { min-height: 46px; padding: 0 14px; background: @bg_raise; border: 1px solid alpha(@fg, 0.14); border-radius: {{r_input}}px; }
+.s-box.focused { border-color: alpha(@fg, 0.55); }
+.s-glyph { color: @fg_dim; font-size: 18px; }
+.s-entry, .s-entry:focus { background: transparent; border: none; box-shadow: none; outline: none; min-height: 0; padding: 12px 4px; font-size: 16px; color: @fg; }
+.s-hint { font-family: {{font_mono}}; font-size: 11px; color: @fg_dim; }
+.s-chips { margin-top: 16px; }
+.s-chip { min-height: 0; padding: 6px 14px; border-radius: {{r_control}}px; background: transparent; border: 1px solid alpha(@fg, 0.16); color: @fg_dim; font-size: 13px; font-weight: 600; box-shadow: none; }
+.s-chip:hover { background: alpha(@fg, 0.05); }
+.s-chip:checked { background: @lib_accent; color: @accent_on; border-color: transparent; }
+.s-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: @fg_dim; margin-top: 4px; }
+.s-suggest { background: @bg_raise; border-radius: {{r_md}}px; margin-top: 6px; }
+
+button.s-row { min-height: 0; padding: 8px 10px; border-radius: {{r_md}}px; background: transparent; border: none; box-shadow: none; }
+button.s-row:hover { background: alpha(@fg, 0.05); }
+.s-row-title { font-size: 14px; font-weight: 600; color: @fg; }
+.s-row-sub { font-size: 12px; color: @fg_dim; }
+.s-row-right { font-size: 12px; color: @fg_dim; }
+button.s-track { padding: 8px 10px; }
+button.s-side { padding: 10px 0; border-radius: 0; border-bottom: 1px solid alpha(@fg, 0.12); }
+button.s-side:hover { background: transparent; }
+
+.s-hit-row { padding: 12px 0; border-bottom: 1px solid alpha(@fg, 0.12); }
+.s-hit-title { font-size: 16px; font-weight: 600; color: @fg; }
+.s-hit-artist { font-size: 16px; color: @fg_dim; }
+.s-hit-line { font-size: 14px; color: @fg; }
+.s-hit-at { font-family: {{font_mono}}; font-size: 11px; color: @fg_dim; }
+button.s-hit-play { min-height: 0; padding: 7px 12px; border-radius: {{r_control}}px; background: transparent; border: 1px solid alpha(@fg, 0.3); color: @fg; font-size: 13px; font-weight: 600; box-shadow: none; }
+button.s-hit { padding: 0; background: transparent; border: none; box-shadow: none; }
+.s-hit-card { padding: 14px; border-radius: {{r_lg}}px; background: @bg_raise; border: 1px solid alpha(@fg, 0.12); }
+.s-hit-meta { font-family: {{font_mono}}; font-size: 11px; color: @fg_dim; }
+.s-hit-cta { font-size: 13px; font-weight: 600; color: @lib_accent; }
+
+button.s-history { padding: 4px 0; }

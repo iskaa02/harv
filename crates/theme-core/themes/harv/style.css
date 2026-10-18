@@ -1,0 +1,86 @@
+/* Harv — theme-specific CSS. Add your area's rules under the matching marker; keep rules token-driven (@colors) where possible. */
+
+/* --- sidebar --- */
+.sidebar { background-color: @bg_side; background-image: linear-gradient(180deg, alpha(@lib_accent, 0.12), alpha(@lib_accent, 0) 45%); border-right: 1px solid alpha(@fg, 0.1); }
+.nav-row { font-weight: 500; color: @fg_dim; }
+.nav-row:hover { background: alpha(@lib_accent, 0.08); color: @fg; }
+.nav-row:selected { background: alpha(@lib_accent, 0.18); color: @fg; }
+.nav-row:selected image { color: @lib_accent; }
+.nav-section { color: alpha(@fg, 0.5); }
+.nav-pl { padding: 6px 10px; }
+.nav-pl-title { font-size: 14px; font-weight: 600; color: @fg; }
+.nav-pl-sub { font-family: "Red Hat Mono", monospace; font-size: 11px; color: alpha(@fg, 0.5); }
+.nav-new { color: @fg_dim; font-size: 13px; padding: 6px 10px; }
+.sidebar-search { background: @bg_raise; border: 1px solid alpha(@fg, 0.14); border-radius: 8px; padding: 8px 10px; color: @fg_dim; box-shadow: none; font-weight: 400; }
+.sidebar-search:hover { border-color: alpha(@fg, 0.3); background: @bg_raise; }
+.kbd-hint { font-family: "Red Hat Mono", monospace; font-size: 11px; }
+
+/* --- detail (hero, track list, grid) --- */
+.hero-kind { font-family: "Red Hat Mono", monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; color: @lib_accent; }
+.hero-title { font-size: 44px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; }
+.hero-art { border-radius: 6px; box-shadow: 0 12px 28px alpha(#000, 0.2); }
+.hero .page-sub { font-size: 14px; color: @fg_dim; }
+.hero-meta .meta-chip { border: none; padding: 0; font-family: "Red Hat Mono", monospace; font-size: 11px; letter-spacing: 0.06em; color: @fg_dim; }
+.hero-actions button { border-radius: 6px; padding: 9px 16px; font-size: 14px; font-weight: 600; }
+.hero-actions .suggested-action { padding: 10px 22px; }
+.track-thead-cell { font-family: "Red Hat Mono", monospace; font-size: 11px; letter-spacing: 0.04em; color: @fg_dim; }
+.look-table { border-radius: 6px; padding: 4px 12px; min-height: 0; }
+.look-table .track-num { color: @fg_dim; font-size: 12px; }
+.look-table.playing .track-num { color: @lib_accent; }
+.look-table .song-artist { color: @fg_dim; font-size: 14px; }
+.look-table .song-time { color: @fg_dim; }
+.cover-grid .art { border-radius: 6px; }
+
+
+/* --- panel --- */
+.right-panel { background: @bg_raise; padding: 20px; }
+.panel-label { font-family: "Red Hat Mono", monospace; font-size: 11px; letter-spacing: 0.06em; color: @fg_dim; }
+.queue-items > row { border-bottom: 1px solid alpha(@fg, 0.08); }
+.queue-items .song-title { font-size: 14px; font-weight: 600; }
+.lyric-active { font-size: 16px; font-weight: 600; line-height: 1.5; color: @fg; }
+.lyric-next { font-size: 14px; line-height: 1.5; color: @fg_dim; }
+
+
+/* --- bar --- */
+
+/* --- now --- */
+headerbar.nowp-header, headerbar.nowp-header.flat { background: @bg; color: @fg; box-shadow: none; }
+headerbar.nowp-header button { color: @fg; }
+/* The now-playing page uses the page palette. */
+.nowp-page { background-color: @bg; color: @fg; }
+.nowp-page .nowp-title { color: @fg; font-family: "Red Hat Display", sans-serif; font-weight: 700; font-size: 32px; letter-spacing: -0.01em; }
+.nowp-page .nowp-sub, .nowp-page .nowp-counter, .nowp-page .nowp-next-label, .nowp-page .nowp-next-open, .nowp-page .nowp-tab, .nowp-page .nowp-credit-key { color: @fg_dim; }
+.nowp-page .nowp-counter, .nowp-page .nowp-next-label { font-family: "Red Hat Mono", monospace; }
+.nowp-page .nowp-sub { font-family: "Red Hat Display", sans-serif; font-size: 16px; }
+.nowp-page .nowp-tab { font-family: "Red Hat Display", sans-serif; font-size: 14px; }
+.nowp-page .nowp-tab:checked { color: @fg; border-bottom-color: @lib_accent; }
+.nowp-page .nowp-next { background-color: @bg_raise; border-color: alpha(@fg, 0.1); }
+.nowp-page .nowp-next-title { color: @fg; }
+.nowp-page .nowp-credit-val { color: @fg; }
+.nowp-page .nowp-credits { border-top-color: alpha(@fg, 0.1); }
+.nowp-page .nowp-lyrics-note { color: @fg_dim; }
+
+/* --- search --- */
+.s-box { background: @bg_raise; border: 1.5px solid alpha(@fg, 0.35); border-radius: 8px; padding: 0 14px; min-height: 50px; }
+.s-box.focused { border-color: @lib_accent; }
+.s-glyph { color: @fg; font-size: 18px; }
+.s-entry, .s-entry:focus { font-size: 18px; color: @fg; }
+.s-hint { font-family: "Red Hat Mono", monospace; font-size: 11px; color: @fg_dim; }
+.s-chip { border-radius: 6px; border: 1px solid alpha(@fg, 0.32); color: @fg; font-size: 13px; font-weight: 600; padding: 7px 14px; }
+.s-chip:checked { background: @fg; color: @bg_raise; border-color: @fg; }
+.s-label { font-family: "Red Hat Mono", monospace; font-size: 11px; font-weight: 400; color: @fg_dim; }
+.s-hit-row { border-bottom: 1px solid alpha(@fg, 0.16); padding: 12px 0; }
+.s-hit-title { font-size: 16px; font-weight: 600; }
+.s-hit-artist { font-size: 16px; color: @fg_dim; }
+.s-hit-line { font-size: 14px; color: alpha(@fg, 0.85); }
+.s-hit-at { font-family: "Red Hat Mono", monospace; font-size: 11px; color: @fg_dim; }
+button.s-hit-play { border-radius: 6px; padding: 7px 12px; font-size: 13px; font-weight: 600; color: @fg; border: 1px solid alpha(@fg, 0.35); }
+button.s-track { padding: 8px 0; }
+button.s-side { border-bottom: 1px solid alpha(@fg, 0.16); padding: 10px 0; }
+button.s-side .s-row-title { font-size: 15px; }
+button.s-side .s-row-right { font-family: "Red Hat Mono", monospace; font-size: 11px; }
+
+
+/* --- accent: the play buttons follow the accent setting instead of a fixed colour --- */
+.play-btn, .themed-bar .bar-play, .nowp-transport .bar-play { background: @lib_accent; color: @accent_on; }
+.play-btn:hover, .themed-bar .bar-play:hover, .nowp-transport .bar-play:hover { background: alpha(@lib_accent, 0.88); }

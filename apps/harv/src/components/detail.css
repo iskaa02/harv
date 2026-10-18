@@ -1,0 +1,27 @@
+/* detail components (hero, track list, cover grid) — token-driven rules, templated like the app stylesheet. */
+
+/* hero */
+.hero-meta { margin-top: 2px; }
+.meta-chip { font-family: {{font_mono}}; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; color: alpha(@fg, 0.6); border: 1px solid alpha(@fg, 0.18); border-radius: {{r_control}}px; padding: 3px 10px; }
+.hero-actions button { min-height: 0; }
+
+/* table / rows: column header and row variants */
+.track-thead { padding: 10px 0 8px 0; border-bottom: 1px solid alpha(@fg, 0.12); margin-bottom: 4px; }
+.track-thead-cell { font-family: {{font_mono}}; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; color: @fg_dim; }
+.look-table, .look-rows { min-height: {{track_row_h}}px; }
+.look-rows { border-radius: 0; border-bottom: 1px solid alpha(@fg, 0.08); }
+.look-rows:hover { background: alpha(@fg, 0.04); }
+.track-list 
+/* cover grid */
+.cover-grid .art { border-radius: {{r_lg}}px; }
+.cover-grid .art.round { border-radius: 999px; }
+.grid-badge { font-family: {{font_mono}}; font-size: 11px; font-weight: 500; color: @fg; background: @bg; padding: 3px 7px; border-radius: {{r_xs}}px; margin: 10px; }
+.grid-card .card-title { margin-top: 2px; }
+
+/* library header (counters on the right) */
+.library-head { padding: 4px 0 0 0; }
+.library-title { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
+.library-filters { font-family: {{font_mono}}; font-size: 12px; font-weight: 500; color: @fg_dim; }
+
+.hero-icon { background: alpha(@lib_accent, 0.16); color: @lib_accent; border-radius: {{r_hero}}px; box-shadow: none; }
+.hero-icon.hero-art { box-shadow: none; }

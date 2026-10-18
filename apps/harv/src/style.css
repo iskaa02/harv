@@ -1,0 +1,172 @@
+/* harv – dark, Apple-Music-ish. Accent colour comes from the playing cover (`@lib_accent`, loaded separately).
+   TEMPLATE: colours are @define-color names emitted by theme-core (see docs/THEMING_DESIGN.md); double-brace placeholders are substituted from the theme.
+   Scale: spacing 4/8/12/16/24/32; radius 6 (small) / 10 (rows, inputs) / 12 (cards) / 999 (pills); type 11/12.5/14/19/30/38. */
+
+window.harv-window { background: @bg; color: @fg; }
+.harv-window, .harv-window * { font-family: {{font_ui}}; }
+.dim { color: alpha(@fg, 0.5); font-size: 13px; }
+
+headerbar.flat { background: transparent; box-shadow: none; border: none; }
+toolbarview > .content { background: transparent; }
+navigation-view, scrolledwindow, viewport { background: transparent; }
+
+/* Ambient wash: a soft pool of the cover's accent at the top of every page (pure CSS, repaints only when the accent changes). */
+navigation-view { background-image: radial-gradient(ellipse 900px 420px at 30% 0, alpha(@lib_accent, {{wash1}}), alpha(@lib_accent, 0) 100%), linear-gradient(180deg, alpha(@lib_accent, {{wash2}}), alpha(@lib_accent, 0) 520px); }
+
+/* window buttons: translucent so they sit well over artwork too */
+windowcontrols button { background: none; box-shadow: none; min-width: 26px; min-height: 26px; padding: 0; }
+windowcontrols button image { border-radius: 999px; background: alpha(@fg, 0.08); color: alpha(@fg, 0.9); -gtk-icon-size: 16px; padding: 5px; transition: background 150ms ease; }
+windowcontrols button:hover image { background: alpha(@fg, 0.18); }
+
+/* ── sidebar */
+.sidebar { background: alpha(@bg_side, 0.92); padding: 18px 12px 12px 12px; border-right: 1px solid alpha(@fg, 0.06); }
+.app-name { font-size: 21px; font-weight: 800; letter-spacing: -0.6px; padding: 4px 12px 18px 12px; }
+.nav-list { background: transparent; }
+.nav-row { border-radius: {{r_md}}px; padding: 9px 12px; margin: 2px 0; color: alpha(@fg, 0.72); font-weight: 600; font-size: 14px; transition: background 150ms ease, color 150ms ease; }
+.nav-row:hover { background: alpha(@fg, 0.06); color: @fg; }
+.nav-row:selected { background: linear-gradient(90deg, alpha(@lib_accent, 0.28), alpha(@lib_accent, 0.12)); color: @fg; }
+.nav-row:selected image { color: @lib_accent; }
+.nav-section { font-family: {{font_mono}}; font-size: 10.5px; font-weight: 700; letter-spacing: {{label_tracking}}px; color: alpha(@fg, 0.36); padding: 24px 12px 8px 12px; }
+.nav-prefs { border-radius: {{r_md}}px; padding: 9px 12px; color: alpha(@fg, 0.7); font-weight: 600; transition: background 150ms ease; }
+.nav-prefs:hover { background: alpha(@fg, 0.06); }
+
+/* ── page chrome */
+.page-title { font-size: 34px; font-weight: 800; letter-spacing: -0.9px; }
+.page-sub { font-size: 14px; font-weight: 500; color: alpha(@fg, 0.6); }
+.section-title { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
+.detail-head { padding: 12px 0 8px 0; }
+.hero-title { font-size: 38px; font-weight: 800; letter-spacing: -0.9px; }
+.hero-kind { font-family: {{font_mono}}; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: alpha(@fg, 0.55); }
+.hero-art { box-shadow: 0 24px 60px alpha(#000, 0.6), 0 6px 16px alpha(#000, 0.4); border-radius: {{r_hero}}px; }
+.see-all, .shelf-arrow { color: alpha(@fg, 0.6); }
+.shelf-arrow { background: alpha(@fg, 0.08); min-width: 28px; min-height: 28px; padding: 0; transition: background 150ms ease, color 150ms ease; }
+.shelf-arrow:hover { background: alpha(@fg, 0.18); color: @fg; }
+.shelf-arrow:disabled { opacity: 0.3; }
+
+/* ── states: empty / error / loading */
+.state { padding: 56px 24px; }
+.state-icon { color: alpha(@fg, 0.28); }
+.state-title { font-size: 17px; font-weight: 700; }
+.state-desc { font-size: 13.5px; color: alpha(@fg, 0.55); }
+.state-expander { font-size: 12px; color: alpha(@fg, 0.45); }
+.state-detail { font-family: monospace; font-size: 11.5px; color: alpha(@fg, 0.5); margin-top: 6px; }
+@keyframes pulse { from { opacity: 0.35; } to { opacity: 0.8; } }
+.skeleton { background: alpha(@fg, 0.08); border-radius: {{r_sm}}px; animation: pulse 900ms ease-in-out infinite alternate; }
+.skeleton.line { border-radius: 4px; }
+
+/* ── cover art */
+.art { border-radius: {{r_cover}}px; background: alpha(@fg, 0.07); }
+.art.round { border-radius: 999px; }
+.hero-art.round { box-shadow: 0 14px 36px alpha(#000, 0.5); }
+
+/* ── cards / shelves */
+.shelf { min-height: 0; }
+.card-btn { padding: 10px; border-radius: {{r_xl}}px; transition: background 200ms ease; }
+.card-btn:hover { background: alpha(@fg, 0.08); box-shadow: inset 0 0 0 1px alpha(@fg, 0.05); }
+.card-btn:active { transform: scale(0.98); }
+.card-btn .art { box-shadow: 0 8px 22px alpha(#000, 0.45), 0 1px 3px alpha(#000, 0.4); transition: transform 220ms ease, box-shadow 220ms ease; }
+.card-btn:hover .art { transform: scale(1.03); box-shadow: 0 14px 30px alpha(#000, 0.55), 0 2px 6px alpha(#000, 0.4); }
+.card-title { font-size: 13.5px; font-weight: 650; color: @fg; }
+.card-sub { font-size: 12px; font-weight: 500; color: alpha(@fg, 0.5); }
+.card-play { border-radius: 999px; background: @lib_accent; color: @accent_on; min-width: 40px; min-height: 40px; margin: 12px; padding: 0; box-shadow: 0 6px 16px alpha(#000, 0.55); opacity: 0; transition: opacity 160ms ease, transform 160ms ease; transform: translateY(6px); }
+.card-btn:hover .card-play { opacity: 1; transform: translateY(0); }
+
+/* ── track lists */
+.track-list { background: transparent; }
+.track-row { min-height: {{track_row_h}}px; border-radius: {{r_lg}}px; background: transparent; padding: 2px 4px; transition: background 120ms ease; }
+.track-row:hover { background: alpha(@fg, 0.08); }
+.track-row:active { background: alpha(@fg, 0.11); }
+.track-row:focus-visible { outline: 2px solid alpha(@lib_accent, 0.6); outline-offset: -2px; }
+.track-num { font-family: {{font_mono}}; font-size: 13px; font-weight: 500; color: alpha(@fg, 0.45); font-feature-settings: "tnum"; min-width: 22px; }
+.song-title { font-size: 14px; font-weight: 600; color: @fg; }
+.song-title.playing { color: @lib_accent; }
+.song-artist { font-size: 12.5px; font-weight: 500; color: alpha(@fg, 0.58); }
+.song-time { font-family: {{font_mono}}; font-size: 12.5px; font-weight: 500; color: alpha(@fg, 0.5); font-feature-settings: "tnum"; }
+.row-btn { min-width: 32px; min-height: 32px; color: alpha(@fg, 0.4); transition: color 150ms ease; }
+.row-btn:hover { color: @fg; }
+.heart.liked { color: @lib_accent; }
+.list-head { padding: 0 6px; min-height: 34px; }
+.pill-btn { border-radius: {{r_control}}px; padding: 2px 12px; font-size: 12.5px; font-weight: 600; }
+.menu-item { border-radius: {{r_xs}}px; padding: 6px 12px; }
+button.pill { border-radius: {{r_control}}px; font-weight: 700; padding: 8px 20px; }
+button.pill:not(.suggested-action) { background: alpha(@fg, 0.10); }
+button.pill:not(.suggested-action):hover { background: alpha(@fg, 0.16); }
+
+/* ── search */
+searchentry.lib-search {
+  min-height: 44px; border-radius: {{r_input}}px; padding: 0 10px; background: alpha(@fg, 0.08); color: @fg; border: none; box-shadow: none; outline: none; transition: background 150ms ease, box-shadow 150ms ease;
+}
+searchentry.lib-search:focus-within { background: alpha(@fg, 0.12); box-shadow: inset 0 0 0 1.5px alpha(@lib_accent, 0.7); }
+searchentry.lib-search image { color: alpha(@fg, 0.5); }
+.chips { margin: 2px 0; }
+.chip { border-radius: {{r_control}}px; padding: 5px 16px; background: alpha(@fg, 0.07); box-shadow: inset 0 0 0 1px alpha(@fg, 0.06); font-weight: 600; font-size: 13px; transition: background 150ms ease, box-shadow 150ms ease; }
+.chip:hover { background: alpha(@fg, 0.13); box-shadow: inset 0 0 0 1px alpha(@fg, 0.12); }
+.chip:checked { background: @lib_accent; color: @accent_on; box-shadow: 0 4px 14px alpha(@lib_accent, 0.4); }
+.suggest-list { background: @bg_raise; border-radius: {{r_lg}}px; box-shadow: 0 8px 24px alpha(#000, 0.4); }
+.suggest-list row { padding: 0; }
+.suggest-list row:hover { background: alpha(@fg, 0.07); }
+.history-item { border-radius: {{r_sm}}px; padding: 6px 10px; color: alpha(@fg, 0.8); }
+
+/* ── mini bar: translucent, tinted by the cover */
+.mini-bar { background-color: @bar_bg; color: @bar_fg; background-image: linear-gradient(90deg, alpha(@lib_accent, {{bar_tint1}}), alpha(@lib_accent, {{bar_tint2}}) 55%); border-top: 1px solid alpha(@bar_fg, 0.08); box-shadow: 0 -10px 30px alpha(#000, 0.35); }
+.mini-bar button.flat { color: @bar_fg; }
+.mini-bar .song-title { color: @bar_fg; }
+.mini-bar .song-artist { color: alpha(@bar_fg, 0.58); }
+.mini-bar .art { box-shadow: 0 4px 12px alpha(#000, 0.5); border-radius: {{r_sm}}px; }
+scale.mini-seek { min-height: 12px; margin: 0; padding: 0; }
+scale.mini-seek trough { min-height: 3px; background: alpha(@bar_fg, 0.14); border-radius: 0; transition: min-height 120ms ease; }
+scale.mini-seek:hover trough { min-height: 5px; }
+scale.mini-seek highlight { background: @lib_accent; border-radius: 0; }
+scale.mini-seek slider { min-width: 0; min-height: 0; background: transparent; border: none; box-shadow: none; margin: 0; padding: 0; }
+scale.mini-seek:hover slider { min-width: 12px; min-height: 12px; background: @bar_fg; border-radius: 999px; margin: -4px; box-shadow: 0 1px 4px alpha(#000, 0.5); }
+.mini-time { font-family: {{font_mono}}; font-size: 12px; color: alpha(@bar_fg, 0.55); font-feature-settings: "tnum"; margin-right: 8px; }
+.play-btn { background: @play_bg; color: @play_fg; box-shadow: 0 4px 14px alpha(#000, 0.4); min-width: 40px; min-height: 40px; transition: transform 120ms ease, background 150ms ease; }
+.play-btn:hover { background: alpha(@play_bg, 0.88); }
+.play-btn:active { transform: scale(0.94); }
+.play-btn.big { min-width: 56px; min-height: 56px; }
+
+/* ── now playing */
+.np-controls button { color: alpha(@np_fg, 0.85); transition: color 150ms ease, transform 120ms ease; }
+.np-controls button:active { transform: scale(0.92); }
+.np-controls button.on { color: @lib_accent; }
+.np-controls .heart.liked { color: @lib_accent; }
+.np-controls .play-btn { background: @np_fg; color: @np_on; border-radius: {{r_control}}px; }
+.np-times { margin-top: 0; }
+.np-time { font-family: {{font_mono}}; font-size: 11.5px; letter-spacing: 0.2px; font-weight: 600; color: alpha(@np_fg, 0.6); font-feature-settings: "tnum"; }
+.vol trough { background: alpha(@np_fg, 0.22); min-height: 4px; border-radius: 999px; }
+.vol highlight { border-radius: 999px; }
+.vol highlight { background: alpha(@np_fg, 0.85); }
+.vol slider { background: @np_fg; box-shadow: none; }
+.np-header button { color: alpha(@np_fg, 0.9); }
+.lyrics-note { font-size: 20px; font-weight: 600; color: alpha(@np_fg, 0.5); }
+button.on { color: @lib_accent; }
+
+button.suggested-action { background: @lib_accent; color: @accent_on; transition: background 150ms ease; }
+button.suggested-action:hover { background: alpha(@lib_accent, 0.85); }
+
+/* sleep timer: the menu button tints like other active toggles */
+menubutton.on button { color: @lib_accent; }
+
+/* ── dialogs, preferences, popovers, toasts */
+dialog-host > dialog.floating.background, window.dialog.background { background: @bg_raise; }
+preferencespage preferencesgroup > box > box > list, list.boxed-list, .boxed-list { background: alpha(@fg, 0.05); border-radius: {{r_input}}px; box-shadow: none; }
+list.boxed-list > row { background: transparent; }
+list.boxed-list > row:hover { background: alpha(@fg, 0.04); }
+popover.menu contents, popover > contents { border-radius: {{r_input}}px; }
+toast { background: alpha(@toast_bg, 0.96); border-radius: {{r_control}}px; box-shadow: 0 6px 20px alpha(#000, 0.45); color: @toast_fg; }
+switch:checked { background: @lib_accent; }
+switch:checked slider { background: @accent_on; }
+scrollbar slider { border-radius: 999px; }
+
+/* drag-to-reorder: the row under the pointer shows an accent edge */
+.track-row.drop-over { box-shadow: inset 0 2px 0 @lib_accent; }
+
+/* Full-screen view open / close animation: the transport row fades in after the artwork (see window.rs `open_full`). */
+.np-chrome { transition: opacity 360ms ease-out 300ms, transform 360ms ease-out 300ms; }
+.np-chrome.np-hidden { opacity: 0; transform: translateY(14px); transition: opacity 180ms ease-in, transform 180ms ease-in; }
+
+/* Full-screen lyrics page: the page colour shows through when the theme asks for no backdrop; `chrome = "capsule"` puts the controls on a translucent pill. */
+.np-page { background-color: @bg; }
+.np-capsule .np-controls { background-color: alpha(@np_fg, 0.10); border-radius: {{r_control}}px; padding: 4px 10px; }
+.np-capsule .np-header button { background-color: alpha(@np_fg, 0.10); border-radius: {{r_control}}px; }
+.np-capsule .np-header windowcontrols button { background-color: transparent; border-radius: 0; }

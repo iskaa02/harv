@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700&family=Red+Hat+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#D6D7D4;font-family:'Red Hat Display',sans-serif}*{box-sizing:border-box}img{display:block}</style>
+</helmet>
+<div style="padding:48px;width:max-content;display:flex;flex-direction:column;gap:22px">
+
+<div style="font:500 12px 'Red Hat Mono',monospace;color:#55575A">01 — CHANNEL (PLAYLIST)</div>
+<div style="width:1280px;height:800px;background:#F4F4F2;border-radius:10px;overflow:hidden;box-shadow:0 0 0 1px #A9AAA6,0 30px 70px rgba(0,0,0,.25);color:#111214;display:flex;flex-direction:column">
+<div style="height:40px;background:#111214;color:#ECECEA;display:flex;align-items:center;padding:0 16px;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:#3A3C40"></span><span style="width:12px;height:12px;border-radius:50%;background:#3A3C40"></span><span style="width:12px;height:12px;border-radius:50%;background:#3A3C40"></span><span style="flex:1;text-align:center;font-size:13px;font-weight:600">Mixer</span><span style="font:500 11px 'Red Hat Mono',monospace;color:#8E9094">44.1 kHz</span></div>
+<div style="flex:1;display:flex;min-height:0">
+<div style="width:240px;background:#ECECEA;border-right:1px solid #D2D3CF;padding:16px 12px;display:flex;flex-direction:column;gap:2px;font-size:14px">
+<div style="display:flex;align-items:center;gap:8px;background:#FFFFFF;border:1px solid #D2D3CF;border-radius:8px;padding:8px 10px;color:#55575A;margin-bottom:12px">⌕ <span>Search</span><span style="margin-left:auto;font:500 11px 'Red Hat Mono',monospace">⌘K</span></div>
+<div style="padding:8px 10px;color:#33353A">Home</div>
+<div style="padding:8px 10px;color:#33353A">Liked songs</div>
+<div style="padding:8px 10px;color:#33353A">Recently played</div>
+<div style="font:500 11px 'Red Hat Mono',monospace;color:#6E7074;letter-spacing:.06em;padding:18px 10px 8px">CHANNELS</div>
+<sc-for list="{{ channels }}" as="c" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;background:{{ c.bg }}"><img src="{{ c.art }}" alt="" style="width:32px;height:32px;border-radius:4px;object-fit:cover;object-position:{{ c.pos }}"><div style="flex:1"><div style="font-size:14px;font-weight:600">{{ c.name }}</div><div style="font:400 11px 'Red Hat Mono',monospace;color:#6E7074">CH {{ c.n }} · {{ c.count }}</div></div><div style="display:flex;gap:2px;align-items:flex-end;height:16px"><div style="width:3px;height:{{ c.m1 }}px;background:#111214"></div><div style="width:3px;height:{{ c.m2 }}px;background:oklch(0.62 0.17 25)"></div></div></div>
+</sc-for>
+<div style="padding:10px;color:#55575A;font-size:13px;margin-top:4px">+ New channel</div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;min-width:0">
+<div style="display:flex;gap:22px;align-items:flex-end;padding:24px 28px 20px;border-bottom:1px solid #D2D3CF">
+<img src="{{ A.sunrise }}" alt="" style="width:170px;height:170px;border-radius:6px;object-fit:cover;box-shadow:0 12px 28px rgba(0,0,0,.2)">
+<div style="flex:1"><div style="font:500 11px 'Red Hat Mono',monospace;color:oklch(0.55 0.17 25);letter-spacing:.06em">CHANNEL 01</div><div style="font-size:44px;font-weight:700;letter-spacing:-.02em;line-height:1.05;margin-top:4px">Late</div><div style="font-size:14px;color:#55575A;margin-top:6px">Quiet records for after midnight · 14 tracks · 58 min</div>
+<div style="display:flex;gap:10px;margin-top:16px;align-items:center"><span style="background:oklch(0.62 0.17 25);color:#FFFFFF;border-radius:6px;padding:10px 22px;font-size:14px;font-weight:600">▶ Play</span><span style="border:1px solid #A9AAA6;border-radius:6px;padding:9px 16px;font-size:14px">⤮ Shuffle</span><span style="border:1px solid #A9AAA6;border-radius:6px;padding:9px 14px;font-size:14px">⋯</span><span style="margin-left:auto;font:500 11px 'Red Hat Mono',monospace;color:#6E7074">CROSSFADE 4s · GAIN −2 dB</span></div></div>
+</div>
+<div style="display:grid;grid-template-columns:40px minmax(0,2fr) minmax(0,1.2fr) minmax(0,1.2fr) 60px;gap:14px;padding:10px 28px;font:500 11px 'Red Hat Mono',monospace;color:#6E7074;letter-spacing:.04em;border-bottom:1px solid #D2D3CF"><span>#</span><span>TITLE</span><span>ARTIST</span><span>ALBUM</span><span style="text-align:right">TIME</span></div>
+<div style="padding:0 16px">
+<sc-for list="{{ tracks }}" as="t" hint-placeholder-count="6">
+<div style="display:grid;grid-template-columns:40px minmax(0,2fr) minmax(0,1.2fr) minmax(0,1.2fr) 60px;gap:14px;align-items:center;padding:8px 12px;border-radius:6px;background:{{ t.bg }};font-size:14px"><span style="font:500 12px 'Red Hat Mono',monospace;color:{{ t.nc }}">{{ t.n }}</span><span style="display:flex;align-items:center;gap:12px;font-weight:600"><img src="{{ t.art }}" alt="" style="width:36px;height:36px;border-radius:4px;object-fit:cover;object-position:{{ t.pos }}">{{ t.t }}</span><span style="color:#55575A">{{ t.a }}</span><span style="color:#55575A">{{ t.al }}</span><span style="text-align:right;font:500 12px 'Red Hat Mono',monospace;color:#55575A">{{ t.d }}</span></div>
+</sc-for>
+</div>
+</div>
+<div style="width:290px;border-left:1px solid #D2D3CF;background:#FFFFFF;padding:20px;display:flex;flex-direction:column">
+<div style="font:500 11px 'Red Hat Mono',monospace;color:#6E7074;letter-spacing:.06em">UP NEXT</div>
+<sc-for list="{{ queue }}" as="q" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #ECECEA"><span style="color:#A9AAA6">≡</span><img src="{{ q.art }}" alt="" style="width:36px;height:36px;border-radius:4px;object-fit:cover;object-position:{{ q.pos }}"><div style="flex:1"><div style="font-size:14px;font-weight:600">{{ q.t }}</div><div style="font-size:12px;color:#6E7074">{{ q.a }}</div></div><span style="font:500 11px 'Red Hat Mono',monospace;color:#6E7074">{{ q.d }}</span></div>
+</sc-for>
+<div style="margin-top:auto;font:500 11px 'Red Hat Mono',monospace;color:#6E7074;letter-spacing:.06em">LYRICS</div>
+<div style="font-size:16px;font-weight:600;line-height:1.5;margin-top:8px">Five towers blinking down the wire</div>
+<div style="font-size:14px;color:#8E9094;line-height:1.5">I'm counting static, counting late</div>
+</div>
+</div>
+<div style="height:80px;background:#111214;color:#ECECEA;display:flex;align-items:center;gap:20px;padding:0 20px">
+<img src="{{ A.wave }}" alt="" style="width:48px;height:48px;border-radius:4px;object-fit:cover">
+<div style="width:190px"><div style="font-size:14px;font-weight:600">Low Tide Radio</div><div style="font-size:12px;color:#8E9094">Marlo Finch</div></div>
+<div style="display:flex;gap:18px;align-items:center;font-size:18px;color:#ECECEA"><span style="color:#8E9094">⤮</span><span>⏮</span><span style="width:44px;height:44px;border-radius:50%;background:oklch(0.62 0.17 25);color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:14px">❚❚</span><span>⏭</span><span style="color:#8E9094">↻</span></div>
+<div style="flex:1;display:flex;align-items:center;gap:10px;font:500 11px 'Red Hat Mono',monospace;color:#8E9094"><span>01:42</span><div style="flex:1;height:6px;background:#2E3034;border-radius:3px;position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:38%;background:oklch(0.62 0.17 25);border-radius:3px"></div></div><span>04:08</span></div>
+<div style="display:flex;align-items:center;gap:8px;font:500 11px 'Red Hat Mono',monospace;color:#8E9094"><span>VOL</span><div style="width:90px;height:6px;background:#2E3034;border-radius:3px;position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:70%;background:#ECECEA;border-radius:3px"></div></div></div>
+<div style="display:flex;gap:3px;align-items:flex-end;height:28px"><div style="width:5px;height:22px;background:#ECECEA"></div><div style="width:5px;height:26px;background:oklch(0.62 0.17 25)"></div></div>
+</div>
+</div>
+
+<div style="font:500 12px 'Red Hat Mono',monospace;color:#55575A;margin-top:26px">02 — NOW PLAYING + LYRICS</div>
+<div style="width:1280px;height:800px;background:#111214;border-radius:10px;overflow:hidden;box-shadow:0 0 0 1px #000,0 30px 70px rgba(0,0,0,.35);color:#ECECEA;display:flex;flex-direction:column">
+<div style="height:40px;display:flex;align-items:center;padding:0 16px;gap:8px;border-bottom:1px solid #26282C"><span style="width:12px;height:12px;border-radius:50%;background:#3A3C40"></span><span style="width:12px;height:12px;border-radius:50%;background:#3A3C40"></span><span style="width:12px;height:12px;border-radius:50%;background:#3A3C40"></span><span style="flex:1;text-align:center;font-size:13px;font-weight:600">Mixer — Now playing</span><span style="font:500 11px 'Red Hat Mono',monospace;color:#8E9094">CH 01 · LATE</span></div>
+<div style="flex:1;display:flex;min-height:0;padding:36px 44px;gap:48px">
+<div style="width:400px;flex:none;display:flex;flex-direction:column">
+<img src="{{ A.wave }}" alt="" style="width:400px;height:400px;border-radius:6px;object-fit:cover;box-shadow:0 24px 60px rgba(0,0,0,.6)">
+<div style="font-size:32px;font-weight:700;margin-top:22px;letter-spacing:-.01em">Low Tide Radio</div>
+<div style="font-size:16px;color:#8E9094">Marlo Finch · Side B Nights</div>
+<div style="display:flex;gap:16px;margin-top:22px;align-items:flex-end;height:60px">
+<sc-for list="{{ meters }}" as="m" hint-placeholder-count="16"><div style="width:14px;height:{{ m.h }}px;background:{{ m.c }}"></div></sc-for>
+</div>
+<div style="font:500 11px 'Red Hat Mono',monospace;color:#6E7074;margin-top:8px;letter-spacing:.04em">OUTPUT · L / R · −6 dB PEAK</div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;min-width:0">
+<div style="display:flex;gap:20px;font-size:14px;font-weight:600"><span style="color:#FFFFFF;border-bottom:2px solid oklch(0.62 0.17 25);padding-bottom:6px">Lyrics</span><span style="color:#8E9094">Credits</span><span style="color:#8E9094">Queue</span></div>
+<div style="margin-top:28px;display:flex;flex-direction:column;gap:18px">
+<div style="font-size:30px;font-weight:700;line-height:1.3;color:#4A4C51">Hold the signal, don't let it fade</div>
+<div style="font-size:38px;font-weight:700;line-height:1.25;color:#FFFFFF">Five towers blinking down the wire</div>
+<div style="font-size:30px;font-weight:700;line-height:1.3;color:#8E9094">I'm counting static, counting late</div>
+<div style="font-size:30px;font-weight:700;line-height:1.3;color:#6E7074">Every station sings a little higher</div>
+<div style="font-size:30px;font-weight:700;line-height:1.3;color:#4A4C51">Low tide radio, low tide</div>
+</div>
+<div style="margin-top:auto;display:flex;align-items:center;gap:12px;background:#1B1D20;border:1px solid #26282C;border-radius:8px;padding:12px 14px"><img src="{{ A.sunrise }}" alt="" style="width:40px;height:40px;border-radius:4px;object-fit:cover"><div style="flex:1"><div style="font:500 11px 'Red Hat Mono',monospace;color:#8E9094">NEXT · 2:26</div><div style="font-size:15px;font-weight:600">Glass Harbour — Marlo Finch</div></div><span style="font-size:13px;color:#8E9094">Open queue →</span></div>
+</div>
+</div>
+<div style="height:80px;border-top:1px solid #26282C;display:flex;align-items:center;gap:20px;padding:0 20px">
+<div style="display:flex;gap:18px;align-items:center;font-size:18px"><span style="color:#8E9094">⤮</span><span>⏮</span><span style="width:44px;height:44px;border-radius:50%;background:oklch(0.62 0.17 25);color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:14px">❚❚</span><span>⏭</span><span style="color:#8E9094">↻</span></div>
+<div style="flex:1;display:flex;align-items:center;gap:10px;font:500 11px 'Red Hat Mono',monospace;color:#8E9094"><span>01:42</span><div style="flex:1;height:6px;background:#2E3034;border-radius:3px;position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:38%;background:oklch(0.62 0.17 25);border-radius:3px"></div></div><span>04:08</span></div>
+<div style="display:flex;align-items:center;gap:8px;font:500 11px 'Red Hat Mono',monospace;color:#8E9094"><span>VOL</span><div style="width:90px;height:6px;background:#2E3034;border-radius:3px;position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:70%;background:#ECECEA;border-radius:3px"></div></div></div>
+</div>
+</div>
+
+<div style="font:500 12px 'Red Hat Mono',monospace;color:#55575A;margin-top:26px">03 — SEARCH</div>
+<div style="width:1280px;height:800px;background:#F4F4F2;border-radius:10px;overflow:hidden;box-shadow:0 0 0 1px #A9AAA6,0 30px 70px rgba(0,0,0,.25);color:#111214;display:flex;flex-direction:column">
+<div style="height:40px;background:#111214;color:#ECECEA;display:flex;align-items:center;padding:0 16px;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:#3A3C40"></span><span style="width:12px;height:12px;border-radius:50%;background:#3A3C40"></span><span style="width:12px;height:12px;border-radius:50%;background:#3A3C40"></span><span style="flex:1;text-align:center;font-size:13px;font-weight:600">Mixer — Search</span><span style="width:52px"></span></div>
+<div style="flex:1;padding:28px 36px;display:flex;flex-direction:column;min-height:0">
+<div style="display:flex;align-items:center;gap:12px;background:#FFFFFF;border:1.5px solid #111214;border-radius:8px;padding:14px 18px;font-size:18px;max-width:720px">⌕ <span>counting static</span><span style="color:oklch(0.55 0.17 25)">|</span><span style="margin-left:auto;font:500 11px 'Red Hat Mono',monospace;color:#6E7074">ESC</span></div>
+<div style="display:flex;gap:8px;margin-top:16px;font-size:13px;font-weight:600"><span style="background:#111214;color:#FFFFFF;border-radius:6px;padding:7px 14px">All</span><span style="border:1px solid #A9AAA6;border-radius:6px;padding:7px 14px">Songs</span><span style="border:1px solid #A9AAA6;border-radius:6px;padding:7px 14px">Lyrics</span><span style="border:1px solid #A9AAA6;border-radius:6px;padding:7px 14px">Artists</span><span style="border:1px solid #A9AAA6;border-radius:6px;padding:7px 14px">Channels</span></div>
+<div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:32px;margin-top:26px">
+<div>
+<div style="font:500 11px 'Red Hat Mono',monospace;color:#6E7074;letter-spacing:.06em">LYRIC MATCHES</div>
+<sc-for list="{{ hits }}" as="h" hint-placeholder-count="3">
+<div style="display:flex;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid #D2D3CF"><img src="{{ h.art }}" alt="" style="width:56px;height:56px;border-radius:4px;object-fit:cover;object-position:{{ h.pos }}"><div style="flex:1"><div style="font-size:16px;font-weight:600">{{ h.t }} <span style="font-weight:400;color:#55575A">· {{ h.a }}</span></div><div style="font-size:14px;color:#33353A;margin-top:4px">“{{ h.line }}”</div></div><span style="font:500 11px 'Red Hat Mono',monospace;color:#6E7074">AT {{ h.at }}</span><span style="border:1px solid #A9AAA6;border-radius:6px;padding:7px 12px;font-size:13px;font-weight:600">▶ Play</span></div>
+</sc-for>
+</div>
+<div>
+<div style="font:500 11px 'Red Hat Mono',monospace;color:#6E7074;letter-spacing:.06em">CHANNELS</div>
+<sc-for list="{{ channels }}" as="c" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #D2D3CF"><img src="{{ c.art }}" alt="" style="width:44px;height:44px;border-radius:4px;object-fit:cover;object-position:{{ c.pos }}"><div style="flex:1"><div style="font-size:15px;font-weight:600">{{ c.name }}</div><div style="font:400 11px 'Red Hat Mono',monospace;color:#6E7074">CH {{ c.n }} · {{ c.count }}</div></div><span style="font-size:13px;color:#55575A">Open →</span></div>
+</sc-for>
+</div>
+</div>
+</div>
+<div style="height:80px;background:#111214;color:#ECECEA;display:flex;align-items:center;gap:20px;padding:0 20px">
+<img src="{{ A.wave }}" alt="" style="width:48px;height:48px;border-radius:4px;object-fit:cover">
+<div style="width:190px"><div style="font-size:14px;font-weight:600">Low Tide Radio</div><div style="font-size:12px;color:#8E9094">Marlo Finch</div></div>
+<div style="display:flex;gap:18px;align-items:center;font-size:18px"><span>⏮</span><span style="width:44px;height:44px;border-radius:50%;background:oklch(0.62 0.17 25);color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:14px">❚❚</span><span>⏭</span></div>
+<div style="flex:1;display:flex;align-items:center;gap:10px;font:500 11px 'Red Hat Mono',monospace;color:#8E9094"><span>01:42</span><div style="flex:1;height:6px;background:#2E3034;border-radius:3px;position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:38%;background:oklch(0.62 0.17 25);border-radius:3px"></div></div><span>04:08</span></div>
+</div>
+</div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const A = {
+      wave: 'https://upload.wikimedia.org/wikipedia/commons/0/0a/The_Great_Wave_off_Kanagawa.jpg',
+      sunrise: 'https://upload.wikimedia.org/wikipedia/commons/5/59/Monet_-_Impression%2C_Sunrise.jpg'
+    };
+    const red = 'oklch(0.62 0.17 25)';
+    const channels = [
+      { n: '01', name: 'Late', count: '14 tracks', art: A.sunrise, pos: '50% 50%', m1: 12, m2: 15, bg: '#DCDDD9' },
+      { n: '02', name: 'Dub', count: '9 tracks', art: A.wave, pos: '0% 50%', m1: 8, m2: 11, bg: 'transparent' },
+      { n: '03', name: 'Field', count: '6 tracks', art: A.sunrise, pos: '100% 80%', m1: 14, m2: 9, bg: 'transparent' },
+      { n: '04', name: 'Motor', count: '11 tracks', art: A.wave, pos: '100% 30%', m1: 6, m2: 10, bg: 'transparent' }
+    ];
+    const base = [
+      { t: 'Low Tide Radio', a: 'Marlo Finch', al: 'Side B Nights', d: '4:08', art: A.wave, pos: '0% 50%' },
+      { t: 'Glass Harbour', a: 'Marlo Finch', al: 'Side B Nights', d: '3:41', art: A.sunrise, pos: '50% 50%' },
+      { t: 'Cold Carrier', a: 'Ines Oyelaran', al: 'Night Shift', d: '4:12', art: A.wave, pos: '100% 30%' },
+      { t: 'Paper Moths', a: 'Ada Vell', al: 'Demos', d: '2:58', art: A.sunrise, pos: '0% 80%' },
+      { t: 'Dust Relay', a: 'Sol Brenner', al: 'Live at Harbour Rd', d: '5:06', art: A.wave, pos: '50% 20%' },
+      { t: 'Sunday Ferry', a: 'Ines Oyelaran', al: 'Night Shift', d: '3:27', art: A.sunrise, pos: '100% 30%' },
+      { t: 'Five Towers', a: 'Marlo Finch', al: 'Side B Nights', d: '4:44', art: A.wave, pos: '80% 90%' }
+    ];
+    const tracks = base.map((t, i) => ({ ...t, n: String(i + 1).padStart(2, '0'), bg: i === 0 ? 'oklch(0.93 0.035 25)' : 'transparent', nc: i === 0 ? red : '#6E7074' }));
+    const queue = base.slice(1, 5);
+    const meters = Array.from({ length: 16 }, (_, i) => {
+      const h = 14 + Math.round(Math.abs(Math.sin(i * 0.9) * Math.cos(i * 0.37)) * 46);
+      return { h, c: h > 48 ? red : '#ECECEA' };
+    });
+    const hits = [
+      { t: 'Cold Carrier', a: 'Ines Oyelaran', line: "I'm counting static, counting late", at: '0:58', art: A.wave, pos: '100% 30%' },
+      { t: 'Paper Moths', a: 'Ada Vell', line: 'Pages of counting static on the sill', at: '1:31', art: A.sunrise, pos: '0% 80%' },
+      { t: 'Dust Relay', a: 'Sol Brenner', line: 'Still counting stations after two', at: '3:02', art: A.wave, pos: '50% 20%' }
+    ];
+    return { A, channels, tracks, queue, meters, hits };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+[package]
+name = "harv"
+version = "0.2.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+description = "GTK4 YouTube Music player with an Apple-Music-style synced lyrics screen"
+repository = "https://github.com/iskaa02/harv"
+homepage = "https://github.com/iskaa02/harv"
+readme = "../../README.md"
+
+[dependencies]
+adw = { version = "0.9.2", package = "libadwaita", features = ["v1_5"] }
+gtk = { version = "0.11.5", package = "gtk4", features = ["v4_14"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+async-channel = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+reqwest = { version = "0.13", default-features = false, features = ["default-tls", "http2", "gzip"] }
+serde_json = "1"
+anyhow = "1"
+lyrics-core = { path = "../../crates/lyrics-core" }
+lyrics-net = { path = "../../crates/lyrics-net" }
+player-core = { path = "../../crates/player-core" }
+store-core = { path = "../../crates/store-core" }
+ytm-core = { path = "../../crates/ytm-core" }
+autoeq = { path = "../../crates/autoeq" }
+theme-core = { path = "../../crates/theme-core" }
+seek-widgets = { path = "../../widgets/seek-widgets" }
+lyrics-view = { path = "../../widgets/lyrics-view" }
+
+# .deb (cargo-deb) — shared-library deps are detected from the binary
+[package.metadata.deb]
+name = "harv"
+maintainer = "iskaa02 <iskaa02@users.noreply.github.com>"
+license-file = ["../../LICENSE", "0"]
+section = "sound"
+priority = "optional"
+extended-description = "harv plays YouTube Music through yt-dlp and libmpv, with word-synced lyrics from BetterLyrics and LRCLIB, an equalizer, downloads, MPRIS media keys and themes."
+depends = "$auto, yt-dlp"
+recommends = "fonts-inter"
+assets = [
+    ["target/release/harv", "usr/bin/harv", "755"],
+    ["../../packaging/dev.harv.Harv.desktop", "usr/share/applications/dev.harv.Harv.desktop", "644"],
+    ["../../packaging/dev.harv.Harv.svg", "usr/share/icons/hicolor/scalable/apps/dev.harv.Harv.svg", "644"],
+    ["../../README.md", "usr/share/doc/harv/README.md", "644"],
+]
+
+# .rpm (cargo-generate-rpm) — library requires come from rpm's find-requires
+[package.metadata.generate-rpm]
+name = "harv"
+summary = "GTK4 YouTube Music player with synced lyrics"
+assets = [
+    { source = "target/release/harv", dest = "/usr/bin/harv", mode = "755" },
+    { source = "../../packaging/dev.harv.Harv.desktop", dest = "/usr/share/applications/dev.harv.Harv.desktop", mode = "644" },
+    { source = "../../packaging/dev.harv.Harv.svg", dest = "/usr/share/icons/hicolor/scalable/apps/dev.harv.Harv.svg", mode = "644" },
+    { source = "../../README.md", dest = "/usr/share/doc/harv/README.md", mode = "644", doc = true },
+    { source = "../../LICENSE", dest = "/usr/share/licenses/harv/LICENSE", mode = "644", license = true },
+]
+
+[package.metadata.generate-rpm.requires]
+yt-dlp = "*"
+
+[package.metadata.generate-rpm.recommends]
+rsms-inter-fonts = "*"

@@ -1,0 +1,14 @@
+[package]
+name = "store-core"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+ytm-core = { path = "../ytm-core" }
+lyrics-core = { path = "../lyrics-core" }   # lyric line derivation for the FTS index (no cycle: lyrics-core depends on nothing here)
+unicode-normalization = "0.1"
+rusqlite = { version = "0.37", features = ["bundled", "backup"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"

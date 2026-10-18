@@ -1,0 +1,13 @@
+# build output
+target/
+
+# upstream reference clone (own repo, read-only for us)
+/SimpMusic/
+
+# editor / OS
+*.swp
+.DS_Store
+
+# local prototype fixtures (iTunes metadata + artwork) and screenshots of them: never commit
+/assets/library/
+/docs/img/

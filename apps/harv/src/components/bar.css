@@ -1,0 +1,38 @@
+/* bar components (components/bar.rs): token-driven rules (font and radius placeholders, plus @colors). Themes add rules under their own bar marker. */
+
+.themed-bar { background-color: @bar_bg; color: @bar_fg; border-top: 1px solid alpha(@bar_fg, 0.08); padding: 0 20px; }
+.themed-bar .bar-meta { min-width: 0; }
+.themed-bar .bar-title { color: @bar_fg; font-size: 14px; font-weight: 600; }
+.themed-bar .bar-artist { color: alpha(@bar_fg, 0.6); font-size: 12px; }
+.themed-bar .bar-time { font-family: {{font_mono}}; font-size: 11px; color: alpha(@bar_fg, 0.55); font-feature-settings: "tnum"; }
+
+.themed-bar .bar-cover { border-radius: {{r_sm}}px; box-shadow: 0 4px 12px alpha(#000, 0.35); }
+.themed-bar .bar-cover.round { border-radius: 999px; }
+
+.themed-bar .bar-btn { min-width: 0; min-height: 0; padding: 0; margin: 0; background: transparent; border: none; box-shadow: none; color: alpha(@bar_fg, 0.7); }
+.themed-bar .bar-btn:hover { color: @bar_fg; background: alpha(@bar_fg, 0.08); border-radius: 999px; }
+.themed-bar .bar-btn.on { color: @lib_accent; }
+.themed-bar .bar-btn image { -gtk-icon-size: 16px; }
+.themed-bar .bar-play { min-width: 0; min-height: 0; padding: 0; margin: 0; background: @play_bg; color: @play_fg; border: none; box-shadow: none; border-radius: 999px; }
+.themed-bar .bar-play:hover { background: alpha(@play_bg, 0.88); }
+.themed-bar .bar-play image { -gtk-icon-size: 16px; }
+
+.themed-bar scale.bar-seek { min-height: 16px; margin: 0; padding: 0; }
+.themed-bar scale.bar-seek trough { min-height: 6px; background: alpha(@bar_fg, 0.14); border-radius: 999px; }
+.themed-bar scale.bar-seek highlight { min-height: 6px; background: @lib_accent; border-radius: 999px; }
+.themed-bar scale.bar-seek.thin trough, .themed-bar scale.bar-seek.thin highlight { min-height: 3px; }
+.themed-bar scale.bar-seek slider { min-width: 0; min-height: 0; background: transparent; border: none; box-shadow: none; margin: 0; padding: 0; }
+.themed-bar scale.bar-seek:hover slider { min-width: 12px; min-height: 12px; background: @bar_fg; border-radius: 999px; margin: -3px; box-shadow: 0 1px 4px alpha(#000, 0.5); }
+.themed-bar .bar-wave { color: @lib_accent; }
+
+.themed-bar scale.bar-vol { min-height: 16px; margin: 0; padding: 0; }
+.themed-bar scale.bar-vol trough { min-height: 4px; background: alpha(@bar_fg, 0.16); border-radius: 999px; }
+.themed-bar scale.bar-vol highlight { min-height: 4px; background: alpha(@bar_fg, 0.85); border-radius: 999px; }
+.themed-bar scale.bar-vol slider { min-width: 12px; min-height: 12px; background: @bar_fg; border: none; border-radius: 999px; box-shadow: none; margin: -4px 0; }
+
+.themed-bar .bar-link { min-height: 0; padding: 4px 8px; margin: 0; background: transparent; border: none; box-shadow: none; color: alpha(@bar_fg, 0.6); font-size: 13px; }
+.themed-bar .bar-link:hover { color: @bar_fg; background: transparent; }
+
+.themed-bar .bar-btn.liked, .themed-bar .bar-btn.on { color: @lib_accent; }
+.themed-bar .track-actions menubutton > button { min-width: 0; min-height: 0; padding: 0; background: transparent; border: none; box-shadow: none; color: alpha(@bar_fg, 0.7); }
+.themed-bar .track-actions menubutton > button:hover { color: @bar_fg; background: alpha(@bar_fg, 0.08); border-radius: 999px; }

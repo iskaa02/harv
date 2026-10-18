@@ -1,0 +1,10 @@
+[package]
+name = "lyrics-view"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+gtk = { version = "0.11.5", package = "gtk4", features = ["v4_14"] }
+image = { version = "0.25", default-features = false }
+lyrics-core = { path = "../../crates/lyrics-core" }

@@ -1,0 +1,55 @@
+/* lagoon — theme-specific CSS (raw: no {{tokens}} here; use @colors). Add rules under the markers. */
+
+/* --- sidebar --- */
+.sidebar { background-color: @bg_side; background-image: linear-gradient(180deg, alpha(@lib_accent, 0.10), alpha(@lib_accent, 0) 55%); border-right: none; }
+.nav-row { font-weight: 400; color: @fg_dim; padding: 9px 12px; }
+.nav-row:hover { background: alpha(@fg, 0.05); color: @fg; }
+.nav-row { border-radius: 14px; }
+.nav-row:selected { background: alpha(@lib_accent, 0.16); color: @lib_accent; font-weight: 600; }
+.nav-row:selected image { color: @lib_accent; }
+.nav-section { color: alpha(@fg, 0.4); }
+.nav-pl { padding: 6px 12px; }
+.nav-pl-title { font-size: 14px; font-weight: 400; color: alpha(@fg, 0.75); }
+.nav-pl:hover .nav-pl-title { color: @fg; }
+
+/* --- detail (hero, track list, grid) --- */
+.hero-title { font-size: 36px; font-weight: 700; letter-spacing: -0.02em; }
+.hero-art { border-radius: 28px; box-shadow: 0 20px 50px alpha(#000, 0.35), 0 0 0 1px alpha(@lib_accent, 0.25); }
+.hero-actions .suggested-action, .hero-actions .pill { border-radius: 8px; }
+.library-title { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
+.library-filters { font-family: "Noto Sans Mono", monospace; color: @fg_dim; }
+.cover-grid .art { border-radius: 20px; }
+.grid-badge { font-family: "Noto Sans Mono", monospace; background: @np_on; color: @fg; border-radius: 6px; margin: 10px; }
+.look-rows { border-bottom-color: alpha(@fg, 0.06); }
+
+
+/* --- panel --- */
+
+/* --- bar --- */
+.themed-bar .bar-cover { border-radius: 10px; }
+.themed-bar .bar-btn { color: alpha(@bar_fg, 0.55); }
+.themed-bar .bar-btn:hover { color: @bar_fg; }
+
+/* --- now --- */
+.nowp-accent { color: @lib_accent; }
+.nowp-section { font-size: 11px; letter-spacing: 0.06em; }
+.nowp-title { font-family: "Figtree", sans-serif; font-weight: 700; letter-spacing: -0.02em; }
+.nowp-sub { font-family: "Figtree", sans-serif; }
+
+/* --- search --- */
+.s-box { background: @bg_raise; border: 1px solid alpha(@fg, 0.14); border-radius: 20px; padding: 0 18px; min-height: 52px; }
+.s-box.focused { border-color: @lib_accent; }
+.s-glyph { color: @fg_dim; font-size: 16px; }
+.s-entry, .s-entry:focus { font-size: 18px; color: @fg; }
+.s-chip { border-radius: 14px; background: @bg_raise; border: 1px solid alpha(@fg, 0.14); color: @fg_dim; padding: 6px 12px; font-size: 13px; }
+.s-chip:checked { background: @lib_accent; color: @accent_on; border-color: transparent; font-weight: 600; }
+.s-label { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; color: @fg_dim; }
+.s-hit-card { background: @bg_raise; border: 1px solid alpha(@fg, 0.14); border-radius: 20px; padding: 14px; }
+.s-hit-card .s-hit-line { font-size: 18px; color: @fg; }
+.s-hit-meta { font-family: "Noto Sans Mono", monospace; font-size: 11px; color: @fg_dim; }
+.s-hit-cta { color: @lib_accent; font-size: 13px; font-weight: 600; }
+.s-hit-cta:hover { color: @fg; }
+button.s-side { padding: 12px 0; border-bottom: none; }
+button.s-side .s-row-title { font-size: 15px; font-weight: 600; }
+button.s-side .s-row-sub { font-size: 12px; }
+

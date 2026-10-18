@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="1024" height="1024">
+  <title>Rawi app icon</title>
+  <defs>
+    <clipPath id="rawi-icon-shape">
+      <rect width="180" height="180" rx="40"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#rawi-icon-shape)">
+    <rect width="180" height="180" fill="#0C0C0F"/>
+    <circle cx="0" cy="180" r="127" fill="#F4A259"/>
+    <circle cx="0" cy="180" r="100" fill="none" stroke="#0C0C0F" stroke-width="3"/>
+    <circle cx="0" cy="180" r="74" fill="none" stroke="#0C0C0F" stroke-width="3"/>
+    <circle cx="0" cy="180" r="40" fill="#0C0C0F"/>
+    <path d="M90,90 A70,70 0 0 1 160,20 A70,70 0 0 1 90,90 Z" fill="#F7EFE2"/>
+    <line x1="96" y1="84" x2="152" y2="28" stroke="#0C0C0F" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>
