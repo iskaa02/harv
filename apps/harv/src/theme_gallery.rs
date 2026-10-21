@@ -97,7 +97,7 @@ fn card(ctx: &Rc<Ctx>, holder: &gtk::Box, dialog: &adw::Dialog, e: &Entry, t: Rc
     card.append(&swatch(t.clone()));
 
     // Name in the theme's own font, with a check on the current one.
-    let title = gtk::Label::builder().label(&t.meta.name).xalign(0.0).ellipsize(pango::EllipsizeMode::End).hexpand(true).build();
+    let title = gtk::Label::builder().label(&t.meta.name).xalign(0.0).ellipsize(pango::EllipsizeMode::End).max_width_chars(1).hexpand(true).build();
     title.set_attributes(Some(&font_attrs(&t.fonts.ui, 13)));
     let caption = gtk::Box::new(gtk::Orientation::Horizontal, 6);
     caption.append(&title);
@@ -109,7 +109,7 @@ fn card(ctx: &Rc<Ctx>, holder: &gtk::Box, dialog: &adw::Dialog, e: &Entry, t: Rc
     let scheme = match t.meta.scheme { Scheme::Light => "Light", Scheme::Dark => "Dark" };
     let lyrics = if t.shell.now_playing.host == "fullscreen" { "Full-screen lyrics" } else { "In-window player" };
     let facts = format!("{scheme} · {lyrics} · {}{}", if e.builtin { "Built-in" } else { "Yours" }, if installed_font { String::new() } else { format!(" · {} not installed", t.fonts.ui) });
-    card.append(&gtk::Label::builder().label(&facts).xalign(0.0).ellipsize(pango::EllipsizeMode::End).css_classes(["dim-label", "caption"]).build());
+    card.append(&gtk::Label::builder().label(&facts).xalign(0.0).ellipsize(pango::EllipsizeMode::End).max_width_chars(1).css_classes(["dim-label", "caption"]).build());
 
     let click = gtk::GestureClick::new();
     { let (c, h, d, id) = (ctx.clone(), holder.clone(), dialog.clone(), e.id.clone()); click.connect_released(move |_, n, _, _| { if n == 1 { activate(&c, &h, &d, &id); } }); }
