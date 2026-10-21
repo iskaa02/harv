@@ -201,7 +201,7 @@ fn transport(env: &Env, n: &Node) -> gtk::Widget {
         let Some(row) = weak.upgrade() else { return false };
         for (name, b) in state_btns.iter() {
             match name.as_str() {
-                "play" => b.set_icon_name(if matches!(s.status, Status::Playing | Status::Loading) { "media-playback-pause-symbolic" } else { "media-playback-start-symbolic" }),
+                "play" => crate::player::set_play_button(b, s),
                 "shuffle" => set_on(b, s.shuffle),
                 "radio" => set_on(b, s.auto_radio),
                 "repeat" => { b.set_icon_name(if s.repeat == Repeat::One { "media-playlist-repeat-song-symbolic" } else { "media-playlist-repeat-symbolic" }); set_on(b, s.repeat != Repeat::Off); }
@@ -265,9 +265,11 @@ fn seek(env: &Env, n: &Node) -> gtk::Widget {
     if times { row.append(&rem); }
 
     let tick: Rc<dyn Fn()> = {
-        let (ctx, scale, wave, el, rem) = (ctx.clone(), scale.clone(), wave.clone(), el.clone(), rem.clone());
+        let (ctx, scale, wave, el, rem, row_w) = (ctx.clone(), scale.clone(), wave.clone(), el.clone(), rem.clone(), row.downgrade());
         Rc::new(move || {
-            let (p, d) = clock(&ctx);
+            let loading = ctx.is_loading();
+            let (p, d) = if loading { (0.0, 0.0) } else { clock(&ctx) };
+            if let Some(r) = row_w.upgrade() { crate::player::set_loading(&r, loading); }
             let frac = if d > 0.0 { (p / d).min(1.0) } else { 0.0 };
             if let Some(s) = &scale { if !s.state_flags().contains(gtk::StateFlags::ACTIVE) { s.set_value(frac); } }
             if let Some(w) = &wave { w.set_progress(frac); }

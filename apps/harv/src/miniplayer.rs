@@ -104,7 +104,8 @@ pub fn show(ctx: &Rc<Ctx>) {
                 set_art(&c, &cover, t.thumb.as_deref(), 56);
             }
         }
-        play.set_icon_name(match s.status { Status::Playing | Status::Loading => "media-playback-pause-symbolic", _ => "media-playback-start-symbolic" });
+        crate::player::set_play_button(&play, s);
+        crate::player::set_loading(&progress, s.status == Status::Loading);
         if s.status == Status::Playing { start() } else { stop() }
         update();
         true

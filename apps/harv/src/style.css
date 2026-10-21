@@ -180,3 +180,10 @@ scrollbar slider { border-radius: 999px; }
 .np-capsule .np-controls { background-color: alpha(@np_fg, 0.10); border-radius: {{r_control}}px; padding: 4px 10px; }
 .np-capsule .np-header button { background-color: alpha(@np_fg, 0.10); border-radius: {{r_control}}px; }
 .np-capsule .np-header windowcontrols button { background-color: transparent; border-radius: 0; }
+
+/* ── loading: the engine is resolving the stream */
+@keyframes harv-pulse { 0% { opacity: 0.35; } 50% { opacity: 1; } 100% { opacity: 0.35; } }
+.mini-seek.loading, .bar-seek-row.loading .bar-seek, .bar-seek-row.loading .bar-wave, .np-time.loading, .loading > .np-time { animation: harv-pulse 1.2s ease-in-out infinite; }
+.bar-seek-row.loading .bar-time, .loading .np-time { opacity: 0.45; }
+.song-title.loading { animation: harv-pulse 1.2s ease-in-out infinite; }
+button.play-btn.loading spinner { min-width: 18px; min-height: 18px; }

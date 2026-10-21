@@ -62,6 +62,8 @@ pub enum Command {
     /// Load a saved queue paused at `position` seconds (app start).
     Restore { state: QueueState, position: f64 },
     Jump(usize),
+    /// Warm a stream (a row was hovered) so the click that likely follows starts at once.
+    Prefetch(String),
     Play,
     Pause,
     TogglePause,
@@ -123,7 +125,7 @@ impl Engine {
         let actor = Actor {
             ytm, audio, queue: Queue::default(), out, me: weak, status: Status::Stopped, duration: 0.0, volume: 1.0, quality: Quality::HighOpus, endless: true, auto_radio: false, radio: None, radio_epoch: 0,
             gen: 0, retried: false, failures: 0, start_at: None, start_paused: false, radio_inflight: false,
-            fx: AudioFx::default(), crossfade_ms: 0, sleep: None, sleep_gain: 1.0, sponsor: vec![], segments: vec![], skipped: None, seg_gen: 0, pause_next: false,
+            fx: AudioFx::default(), crossfade_ms: 0, sleep: None, sleep_gain: 1.0, sponsor: vec![], segments: vec![], skipped: None, seg_gen: 0, pause_next: false, resolving: None,
         };
         rt.spawn(actor.run(rx));
         Ok((Engine { tx, clock }, updates))
@@ -170,6 +172,8 @@ struct Actor {
     seg_gen: u64,
     /// Pause as soon as the next track loads (an end-of-track sleep fired).
     pause_next: bool,
+    /// The in-flight stream resolve of the current load; aborted (killing its yt-dlp) when another load supersedes it.
+    resolving: Option<tokio::task::AbortHandle>,
 }
 
 impl Actor {
@@ -216,8 +220,10 @@ impl Actor {
                 self.radio_epoch += 1;
                 self.radio_inflight = false;
                 self.radio = (kind == QueueKind::Radio).then(|| tracks.get(start).map(|t| RadioSrc { seed: t.video_id.clone(), token: None, started: false })).flatten();
+                let loading_same = self.loading_id().is_some_and(|id| tracks.get(start).is_some_and(|t| t.video_id == id));
                 self.queue.set(tracks, start, kind);
-                self.fresh_load();
+                // Clicking the song that is already loading just swaps the queue under it; a second resolve would only delay it.
+                if loading_same { self.emit(); } else { self.fresh_load(); }
             }
             Command::Restore { state, position } => {
                 self.radio_epoch += 1;
@@ -228,10 +234,14 @@ impl Actor {
                 self.start_paused = true;
                 self.fresh_load_keep_start();
             }
-            Command::Jump(i) => if self.queue.jump(i) { self.fresh_load(); },
+            Command::Jump(i) => {
+                let loading_same = self.loading_id().is_some_and(|id| self.queue.items().get(i).is_some_and(|t| t.video_id == id));
+                if self.queue.jump(i) { if loading_same { self.emit(); } else { self.fresh_load(); } }
+            }
+            Command::Prefetch(id) => self.ytm.prefetch_stream(&id, self.quality),
             Command::Play => self.set_paused(false),
             Command::Pause => self.set_paused(true),
-            Command::TogglePause => self.set_paused(self.status == Status::Playing),
+            Command::TogglePause => self.set_paused(match self.status { Status::Playing => true, Status::Loading => !self.start_paused, _ => false }),
             Command::Next => self.go_next(false),
             Command::Prev => {
                 if self.audio_clock_pos() > 3.0 { let _ = self.audio.seek(0.0); } else { self.queue.back(); self.fresh_load(); }
@@ -255,7 +265,7 @@ impl Actor {
                 _ => self.emit(),
             },
             Command::Move { from, to } => { self.queue.move_item(from, to); self.emit(); }
-            Command::Stop => { let _ = self.audio.stop(); self.gen += 1; self.pause_next = false; self.status = Status::Stopped; self.duration = 0.0; self.emit(); }
+            Command::Stop => { if let Some(h) = self.resolving.take() { h.abort(); } let _ = self.audio.stop(); self.gen += 1; self.pause_next = false; self.status = Status::Stopped; self.duration = 0.0; self.emit(); }
             Command::SetFx(fx) => { self.fx = fx; if let Err(e) = self.audio.apply_fx(&self.fx) { self.error(format!("effects: {e}")); } self.emit(); }
             Command::SetCrossfade(ms) => { self.crossfade_ms = ms.min(15_000); self.emit(); }
             Command::SetSleepTimer(mode) => {
@@ -268,6 +278,12 @@ impl Actor {
             }
             Command::SetSponsorBlock(cats) => { self.sponsor = cats; self.fetch_segments(); self.emit(); }
         }
+    }
+
+    /// The video id being resolved right now, if the engine is loading a track (not retrying after an error).
+    fn loading_id(&self) -> Option<String> {
+        if self.status != Status::Loading || self.retried { return None; }
+        self.queue.current().map(|t| t.video_id.clone())
     }
 
     fn audio_clock_pos(&self) -> f64 { self.audio.clock().position() }
@@ -316,14 +332,18 @@ impl Actor {
             return;
         };
         self.gen += 1;
+        // Silence the previous track right away instead of letting it play until the new stream resolves; this also keeps its
+        // late end-of-file / error events from skipping or retrying the track being loaded.
+        if let Some(h) = self.resolving.take() { h.abort(); }
+        if self.status == Status::Playing { self.audio.fade_out_stop(120); } else { let _ = self.audio.stop(); }
         self.status = Status::Loading;
         self.duration = t.duration_s.map_or(0.0, f64::from);
         self.emit();
         let (ytm, quality, gen, me) = (self.ytm.clone(), self.quality, self.gen, self.me.clone());
-        tokio::spawn(async move {
+        self.resolving = Some(tokio::spawn(async move {
             let result = ytm.stream(&t.video_id, quality).await.map_err(|e| format!("{e:#}"));
             if let Some(tx) = me.upgrade() { let _ = tx.send(Msg::Resolved { gen, result }); }
-        });
+        }).abort_handle());
         self.fetch_segments();
     }
 
@@ -342,7 +362,7 @@ impl Actor {
 
     /// A track is now playing: warm the next stream and refill radio when the queue is nearly used up.
     fn after_start(&mut self) {
-        if let Some(n) = self.queue.peek_next() { self.ytm.prefetch_stream(&n.video_id, self.quality); }
+        for n in self.queue.peek_ahead(3) { self.ytm.prefetch_stream(&n.video_id, self.quality); }
         if self.queue.repeat() == Repeat::Off && self.queue.remaining() <= 1 { self.request_radio(false); }
     }
 
@@ -352,6 +372,7 @@ impl Actor {
         self.ytm.invalidate_stream(&t.video_id);
         if !self.retried {
             self.retried = true;
+            self.error(format!("{} — retrying…", t.title));
             self.start_at = (self.audio_clock_pos() > 1.0).then(|| self.audio_clock_pos());
             return self.load_current();
         }

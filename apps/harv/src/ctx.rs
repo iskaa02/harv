@@ -62,14 +62,19 @@ pub struct Ctx {
     action_toast: RefCell<Option<adw::Toast>>,
     /// Bumped by [`Ctx::relayout`]: pages that fetch data (Home) rebuild only when a layout preference changed, not on every theme switch.
     pub layout_gen: Cell<u32>,
+    /// The "still loading" timer armed while the engine is in `Loading`.
+    slow_load: RefCell<Option<glib::SourceId>>,
 }
+
+const SLOW_LOAD: std::time::Duration = std::time::Duration::from_secs(8);
+const HOVER_PREFETCH: std::time::Duration = std::time::Duration::from_millis(150);
 
 use std::sync::Arc;
 
 impl Ctx {
     pub fn new(rt: tokio::runtime::Handle, ytm: Arc<Ytm>, store: Store, engine: Engine, lyrics: LyricsService, theme: Rc<theme_core::Theme>) -> Rc<Self> {
         let images = Images::new(rt.clone());
-        Rc::new(Self { rt, ytm, store, engine, lyrics, images, snap: RefCell::new(None), hooks: RefCell::default(), rows: RefCell::default(), toasts: adw::ToastOverlay::new(), accent: gtk::CssProvider::new(), last_cover: Cell::new(None), nav: RefCell::default(), pending: Cell::new(0), theme: RefCell::new(theme), theme_hooks: RefCell::default(), accent_rgb: Cell::new([1.0, 0.22, 0.37]), accent_hooks: RefCell::default(), action_toast: RefCell::default(), layout_gen: Cell::new(0) })
+        Rc::new(Self { rt, ytm, store, engine, lyrics, images, snap: RefCell::new(None), hooks: RefCell::default(), rows: RefCell::default(), toasts: adw::ToastOverlay::new(), accent: gtk::CssProvider::new(), last_cover: Cell::new(None), nav: RefCell::default(), pending: Cell::new(0), theme: RefCell::new(theme), theme_hooks: RefCell::default(), accent_rgb: Cell::new([1.0, 0.22, 0.37]), accent_hooks: RefCell::default(), action_toast: RefCell::default(), layout_gen: Cell::new(0), slow_load: RefCell::default() })
     }
 
     // ── async glue ───────────────────────────────────────────────────────────────────────────
@@ -208,10 +213,40 @@ impl Ctx {
         self.hooks.borrow_mut().push(Box::new(f));
     }
 
-    pub(crate) fn dispatch(&self, s: Snapshot) {
+    pub(crate) fn dispatch(self: &Rc<Self>, s: Snapshot) {
         *self.snap.borrow_mut() = Some(s.clone());
         self.run_hooks(&s);
         self.refresh_rows();
+        self.watch_slow_load(&s);
+    }
+
+    /// A load that takes over `SLOW_LOAD` offers a way out ("Skip"); any state change (the track started, another was picked) re-arms or cancels it.
+    fn watch_slow_load(self: &Rc<Self>, s: &Snapshot) {
+        if let Some(id) = self.slow_load.borrow_mut().take() { id.remove(); }
+        if s.status != Status::Loading { return; }
+        let (me, cur) = (self.clone(), s.current);
+        let id = glib::timeout_add_local_once(SLOW_LOAD, move || {
+            *me.slow_load.borrow_mut() = None;
+            let still = me.snap.borrow().as_ref().is_some_and(|s| s.status == Status::Loading && s.current == cur);
+            if still { let c = me.clone(); me.toast_action("Still loading…", "Skip", move || c.engine.send(Command::Next)); }
+        });
+        *self.slow_load.borrow_mut() = Some(id);
+    }
+
+    /// Warm a row's stream once the pointer has rested on it, so the click that usually follows starts almost at once.
+    pub fn hover_prefetch(self: &Rc<Self>, w: &impl IsA<gtk::Widget>, video_id: &str) {
+        let motion = gtk::EventControllerMotion::new();
+        let pending: Rc<RefCell<Option<glib::SourceId>>> = Rc::default();
+        {
+            let (ctx, id, pending) = (self.clone(), video_id.to_string(), pending.clone());
+            motion.connect_enter(move |_, _, _| {
+                if let Some(old) = pending.borrow_mut().take() { old.remove(); }
+                let (ctx, id, p2) = (ctx.clone(), id.clone(), pending.clone());
+                *pending.borrow_mut() = Some(glib::timeout_add_local_once(HOVER_PREFETCH, move || { *p2.borrow_mut() = None; ctx.engine.send(Command::Prefetch(id.clone())); }));
+            });
+        }
+        motion.connect_leave(move |_| { if let Some(old) = pending.borrow_mut().take() { old.remove(); } });
+        w.add_controller(motion);
     }
 
     fn run_hooks(&self, s: &Snapshot) {
@@ -230,14 +265,15 @@ impl Ctx {
         rows.push(RowRefs { video_id: video_id.to_string(), title: title.downgrade(), heart: heart.downgrade() });
         drop(rows);
         let playing = self.current_track().map(|t| t.video_id);
-        set_row_state(title, heart, playing.as_deref() == Some(video_id), self.store.is_liked(video_id));
+        set_row_state(title, heart, playing.as_deref() == Some(video_id), self.is_loading(), self.store.is_liked(video_id));
     }
 
     pub fn refresh_rows(&self) {
         let playing = self.current_track().map(|t| t.video_id);
         let liked = self.store.liked_ids();
+        let loading = self.is_loading();
         for r in self.rows.borrow().iter() {
-            if let (Some(t), Some(h)) = (r.title.upgrade(), r.heart.upgrade()) { set_row_state(&t, &h, playing.as_deref() == Some(r.video_id.as_str()), liked.contains(&r.video_id)); }
+            if let (Some(t), Some(h)) = (r.title.upgrade(), r.heart.upgrade()) { set_row_state(&t, &h, playing.as_deref() == Some(r.video_id.as_str()), loading, liked.contains(&r.video_id)); }
         }
     }
 
@@ -259,6 +295,8 @@ impl Ctx {
 
     fn hooks_like_changed(&self) { let cur = self.snap.borrow().clone(); if let Some(s) = cur { self.run_hooks(&s); } }
 
+    pub fn is_loading(&self) -> bool { self.snap.borrow().as_ref().is_some_and(|s| s.status == Status::Loading) }
+
     pub fn is_playing(&self) -> bool { self.snap.borrow().as_ref().is_some_and(|s| s.status == Status::Playing) }
 
     /// Persist what a fresh start needs: the queue (as a [`QueueState`]) and the position.
@@ -270,8 +308,9 @@ impl Ctx {
     }
 }
 
-fn set_row_state(title: &gtk::Label, heart: &gtk::Button, playing: bool, liked: bool) {
+fn set_row_state(title: &gtk::Label, heart: &gtk::Button, playing: bool, loading: bool, liked: bool) {
     if playing { title.add_css_class("playing"); } else { title.remove_css_class("playing"); }
+    if playing && loading { title.add_css_class("loading"); } else { title.remove_css_class("loading"); }
     heart.set_icon_name(crate::icons::heart(liked));
     if liked { heart.add_css_class("liked"); } else { heart.remove_css_class("liked"); }
 }

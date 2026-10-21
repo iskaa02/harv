@@ -105,6 +105,13 @@ impl Queue {
     }
 
     /// The track `advance(true)` would pick, without moving (for prefetching).
+    /// The next `n` tracks in play order (no wrap-around), for warming their streams.
+    pub fn peek_ahead(&self, n: usize) -> Vec<&Track> {
+        let Some(c) = self.cursor else { return Vec::new() };
+        if self.repeat == Repeat::One { return Vec::new(); }
+        self.order.iter().skip(c + 1).take(n).map(|&i| &self.items[i]).collect()
+    }
+
     pub fn peek_next(&self) -> Option<&Track> {
         let c = self.cursor?;
         if self.repeat == Repeat::One { return None; }

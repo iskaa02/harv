@@ -208,6 +208,34 @@ impl Audio {
         let _ = self.apply_all();
     }
 
+    /// Quick fade-out of the active deck, then stop it: a track switch ends the old song softly instead of cutting it.
+    /// A `load` / `stop` / cross-fade that follows cancels the ramp (and the stop with it).
+    pub fn fade_out_stop(&self, ms: u64) {
+        self.cancel_crossfade();
+        let g = self.ramp_gen.load(Ordering::Relaxed);
+        let i = self.active_idx();
+        let (mpv, fade, clock) = (self.decks[i].mpv.clone(), self.decks[i].fade.clone(), self.clock.clone());
+        let (master, sleep, ramp_gen) = (self.master.clone(), self.sleep.clone(), self.ramp_gen.clone());
+        clock.set_pos(0.0);
+        clock.set_dur(0.0);
+        let spawned = std::thread::Builder::new().name("fade-out".into()).spawn(move || {
+            const STEPS: u64 = 6;
+            for k in 1..=STEPS {
+                std::thread::sleep(Duration::from_millis((ms / STEPS).max(1)));
+                if ramp_gen.load(Ordering::Relaxed) != g { return; }
+                f_set(&fade, 1.0 - k as f64 / STEPS as f64);
+                let _ = push_volume(&mpv, f_get(&master), f_get(&sleep), f_get(&fade));
+            }
+            if ramp_gen.load(Ordering::Relaxed) != g { return; }
+            let _ = mpv.command("stop", &[]);
+            f_set(&fade, 1.0);
+            let _ = push_volume(&mpv, f_get(&master), f_get(&sleep), f_get(&fade));
+            clock.set_pos(0.0);
+            clock.set_dur(0.0);
+        });
+        if spawned.is_err() { let _ = self.stop(); }
+    }
+
     pub fn stop(&self) -> Result<()> {
         self.cancel_crossfade();
         self.clock.set_pos(0.0);

@@ -19,6 +19,20 @@ fn play_icon(s: &Snapshot) -> &'static str {
     match s.status { Status::Playing | Status::Loading => "media-playback-pause-symbolic", _ => "media-playback-start-symbolic" }
 }
 
+/// Play/pause button face: a spinner while the engine resolves the stream, else the play / pause icon.
+pub fn set_play_button(b: &gtk::Button, s: &Snapshot) {
+    if s.status == Status::Loading {
+        if !b.child().is_some_and(|c| c.is::<gtk::Spinner>()) { b.set_child(Some(&gtk::Spinner::builder().spinning(true).build())); }
+        b.add_css_class("loading");
+    } else {
+        b.set_icon_name(play_icon(s));
+        b.remove_css_class("loading");
+    }
+}
+
+/// Toggle the `loading` style class (dimmed times, pulsing progress) on a widget.
+pub fn set_loading(w: &impl IsA<gtk::Widget>, loading: bool) { if loading { w.add_css_class("loading"); } else { w.remove_css_class("loading"); } }
+
 fn repeat_icon(r: Repeat) -> &'static str { if r == Repeat::One { "media-playlist-repeat-song-symbolic" } else { "media-playlist-repeat-symbolic" } }
 
 // ── mini bar ─────────────────────────────────────────────────────────────────────────────────
@@ -109,7 +123,9 @@ pub fn mini_bar(ctx: &Rc<Ctx>) -> gtk::Widget {
                     set_art(&ctx2, &cover, t.thumb.as_deref(), 52);
                 }
             }
-            play.set_icon_name(play_icon(s));
+            set_play_button(&play, s);
+            set_loading(&progress, s.status == Status::Loading);
+            if s.status == Status::Loading { progress.set_value(0.0); time.set_label(""); }
             radio_guard.set(true);
             radio.set_active(s.auto_radio);
             radio_guard.set(false);
@@ -326,10 +342,13 @@ pub fn now_playing(ctx: &Rc<Ctx>, on_accent: impl Fn([f32; 3]) + 'static, toggle
     let history: Rc<RefCell<Vec<String>>> = Rc::default();
     {
         let (ctx2, view2) = (ctx.clone(), view.clone());
+        let (column, elapsed, remaining) = (column.clone(), elapsed.clone(), remaining.clone());
         let on_accent = Rc::new(on_accent);
         ctx.on_state(move |s| {
             guard.set(true);
-            play.set_icon_name(play_icon(s));
+            set_play_button(&play, s);
+            set_loading(&column, s.status == Status::Loading);
+            if s.status == Status::Loading { elapsed.set_label("0:00"); remaining.set_label(""); }
             shuffle.set_active(s.shuffle);
             radio.set_active(s.auto_radio);
             repeat.set_icon_name(repeat_icon(s.repeat));

@@ -236,6 +236,7 @@ pub fn track_list(ctx: &Rc<Ctx>, tracks: Vec<Track>, kind: QueueKind, extras: Ro
         if let Some(mv) = &extras.on_move { crate::actions::make_reorderable(&row, i, mv.clone()); }
 
         row.set_child(Some(&h));
+        ctx.hover_prefetch(&row, &t.video_id);
         list.append(&row);
     }
 

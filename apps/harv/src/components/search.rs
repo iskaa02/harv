@@ -556,7 +556,9 @@ fn track_rows(st: &Rc<St>, songs: &[Track], px: i32, limit: usize) -> gtk::Box {
     for (i, t) in songs.iter().take(limit).enumerate() {
         let (c, all) = (st.ctx.clone(), all.clone());
         let dur = t.duration_s.map(fmt_time).unwrap_or_default();
-        b.append(&item_row(&st.ctx, t.thumb.as_deref(), px, false, &t.title, &t.artist_line(), &dur, "s-track", move || c.play_row((*all).clone(), i, QueueKind::Songs)));
+        let row = item_row(&st.ctx, t.thumb.as_deref(), px, false, &t.title, &t.artist_line(), &dur, "s-track", move || c.play_row((*all).clone(), i, QueueKind::Songs));
+        st.ctx.hover_prefetch(&row, &t.video_id);
+        b.append(&row);
     }
     b
 }

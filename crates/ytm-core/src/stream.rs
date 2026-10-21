@@ -107,6 +107,7 @@ impl StreamResolver {
 
     async fn run(&self, video_id: &str, quality: Quality) -> Result<Stream> {
         let mut cmd = Command::new(&self.ytdlp);
+        cmd.kill_on_drop(true);
         cmd.args(["-J", "--no-playlist", "--no-warnings", "-f", quality.selector()]);
         if let Some(c) = self.cookies() { cmd.arg("--cookies").arg(c); }
         let out = cmd.arg(format!("https://music.youtube.com/watch?v={video_id}"))
