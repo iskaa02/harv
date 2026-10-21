@@ -26,6 +26,7 @@ autoeq = { path = "../../crates/autoeq" }
 theme-core = { path = "../../crates/theme-core" }
 seek-widgets = { path = "../../widgets/seek-widgets" }
 lyrics-view = { path = "../../widgets/lyrics-view" }
+nucleo-matcher = "0.3.1"
 
 # .deb (cargo-deb) — shared-library deps are detected from the binary
 [package.metadata.deb]

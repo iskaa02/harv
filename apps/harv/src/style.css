@@ -5,6 +5,9 @@
 window.harv-window { background: @bg; color: @fg; }
 .harv-window, .harv-window * { font-family: {{font_ui}}; }
 .dim { color: alpha(@fg, 0.5); font-size: 13px; }
+.palette-head { font-family: {{font_mono}}; font-size: 10.5px; font-weight: 700; letter-spacing: {{label_tracking}}px; color: alpha(@fg, 0.4); padding: 12px 10px 4px 10px; }
+.keycap { font-family: {{font_mono}}; font-size: 11px; font-weight: 600; color: alpha(@fg, 0.62); background: alpha(@fg, 0.08); border-radius: {{r_xs}}px; padding: 1px 6px; min-width: 14px; }
+.palette-foot { font-family: {{font_mono}}; font-size: 11px; color: alpha(@fg, 0.45); padding: 8px 18px 12px 18px; border-top: 1px solid alpha(@fg, 0.08); }
 
 headerbar.flat { background: transparent; box-shadow: none; border: none; }
 toolbarview > .content { background: transparent; }
