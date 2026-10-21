@@ -214,7 +214,7 @@ fn lyrics_style(ctx: &Ctx, view: &LyricsView, o: &LyricsOpts) -> LyricsStyle {
     st.line_gap = Some(o.gap * gap_k);
     st.pad = o.pad;
     st.align = o.align;
-    st.font_family = Some(theme.fonts.ui.clone());
+    st.font_family = Some(std::iter::once(theme.fonts.ui.clone()).chain(theme.fonts.fallbacks.iter().cloned()).collect::<Vec<_>>().join(", "));
     let rgba = |c: [f32; 3], a: f32| [c[0], c[1], c[2], a];
     // "np": the full-screen palette (light text on the dark now-playing page). "theme": the page's own fg / dim.
     let (fg, dim) = if o.colors == "np" { (theme.colors.np_fg.rgb_f32(), theme.colors.np_fg.rgb_f32()) } else { (theme.colors.fg.rgb_f32(), theme.colors.dim.rgb_f32()) };

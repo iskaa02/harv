@@ -10,10 +10,10 @@ use std::collections::HashSet;
 use std::f64::consts::{FRAC_PI_2, PI};
 use std::path::Path;
 use std::rc::Rc;
-use theme_core::{Accent, Color, Entry, Theme};
+use theme_core::{Accent, Color, Entry, Scheme, Theme};
 
-const SW_W: i32 = 196;
-const SW_H: i32 = 112;
+const SW_W: i32 = 252;
+const SW_H: i32 = 144;
 /// Stand-in accent for swatches when a theme follows the artwork.
 const ACCENT_FALLBACK: Color = Color { r: 1.0, g: 0.22, b: 0.37, a: 1.0 };
 
@@ -61,7 +61,7 @@ pub fn fill(holder: &gtk::Box, ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) {
     while let Some(child) = holder.first_child() { holder.remove(&child); }
     let Some(skin) = theme::skin() else { return };
     let (current, fonts) = (skin.current_id(), installed(ctx));
-    let flow = gtk::FlowBox::builder().selection_mode(gtk::SelectionMode::None).homogeneous(true).min_children_per_line(2).max_children_per_line(4).row_spacing(10).column_spacing(10).build();
+    let flow = gtk::FlowBox::builder().selection_mode(gtk::SelectionMode::None).homogeneous(true).min_children_per_line(1).max_children_per_line(3).row_spacing(10).column_spacing(10).build();
     for e in skin.list() {
         match skin.load(&e.id) {
             Ok(t) => flow.append(&card(ctx, holder, dialog, &e, Rc::new(t), e.id == current, &fonts)),
@@ -75,7 +75,12 @@ pub fn fill(holder: &gtk::Box, ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) {
         let _ = std::fs::create_dir_all(&dir);
         if let Err(err) = open_path(&dir) { c.toast(&format!("Cannot open folder: {err}")); }
     }); }
-    holder.append(&folder);
+    let rescan = gtk::Button::builder().label("Rescan").tooltip_text("Pick up themes added or edited on disk").halign(gtk::Align::Start).margin_top(6).css_classes(["flat"]).build();
+    { let (h, c, d) = (holder.clone(), ctx.clone(), dialog.clone()); rescan.connect_clicked(move |_| refresh_later(&h, &c, &d)); }
+    let row = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+    row.append(&folder);
+    row.append(&rescan);
+    holder.append(&row);
 }
 
 /// Rebuild the gallery after the current idle work (a card can't be destroyed inside its own click handler).
@@ -91,15 +96,26 @@ fn card(ctx: &Rc<Ctx>, holder: &gtk::Box, dialog: &adw::PreferencesDialog, e: &E
     card.set_tooltip_text(Some(&format!("Use {}", t.meta.name)));
     card.append(&swatch(t.clone()));
 
-    let title = gtk::Label::builder().label(&t.meta.name).xalign(0.0).ellipsize(pango::EllipsizeMode::End).css_classes(["heading"]).hexpand(true).build();
+    // Name in the theme's own font, with a check on the current one.
+    let stack = std::iter::once(t.fonts.ui.clone()).chain(t.fonts.fallbacks.iter().cloned()).collect::<Vec<_>>().join(", ");
+    let title = gtk::Label::builder().label(&t.meta.name).xalign(0.0).ellipsize(pango::EllipsizeMode::End).hexpand(true).build();
+    title.set_attributes(Some(&font_attrs(&stack, 13)));
     let caption = gtk::Box::new(gtk::Orientation::Horizontal, 6);
     caption.append(&title);
     if current { caption.append(&gtk::Image::from_icon_name("object-select-symbolic")); }
     card.append(&caption);
+
+    // A type specimen: Latin + Arabic, so the font pair is visible (the lyrics use the same stack).
+    let specimen = gtk::Label::builder().label("Aa Bb 123  ·  أبجد هوز").xalign(0.0).ellipsize(pango::EllipsizeMode::End).build();
+    specimen.set_attributes(Some(&font_attrs(&stack, 11)));
+    card.append(&specimen);
+
+    // Facts: scheme · lyrics page · origin, plus a warning when the UI font is missing.
     let installed_font = fonts.contains(&t.fonts.ui.to_lowercase());
-    let font = gtk::Label::builder().label(&if installed_font { t.fonts.ui.clone() } else { format!("{} · not installed", t.fonts.ui) }).xalign(0.0).ellipsize(pango::EllipsizeMode::End).css_classes(["dim-label", "caption"]).build();
-    font.set_attributes(Some(&font_attrs(&t.fonts.ui, 9)));
-    card.append(&font);
+    let scheme = match t.meta.scheme { Scheme::Light => "Light", Scheme::Dark => "Dark" };
+    let lyrics = if t.shell.now_playing.host == "fullscreen" { "Full-screen lyrics" } else { "In-window player" };
+    let facts = format!("{scheme} · {lyrics} · {}{}", if e.builtin { "Built-in" } else { "Yours" }, if installed_font { String::new() } else { format!(" · {} not installed", t.fonts.ui) });
+    card.append(&gtk::Label::builder().label(&facts).xalign(0.0).ellipsize(pango::EllipsizeMode::End).css_classes(["dim-label", "caption"]).build());
 
     let click = gtk::GestureClick::new();
     { let (c, h, d, id) = (ctx.clone(), holder.clone(), dialog.clone(), e.id.clone()); click.connect_released(move |_, n, _, _| { if n == 1 { activate(&c, &h, &d, &id); } }); }

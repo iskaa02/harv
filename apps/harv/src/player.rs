@@ -141,7 +141,7 @@ fn fullscreen_style(ctx: &Ctx) -> lyrics_core::LyricsStyle {
     let (t, c) = (ctx.theme(), ctx.theme().colors.clone());
     let l = &t.lyrics;
     let mut st = LyricsStyle::spotlight();
-    st.font_family = Some(if l.font == "ui" { t.fonts.ui.clone() } else { l.font.clone() });
+    st.font_family = Some(std::iter::once(if l.font == "ui" { t.fonts.ui.clone() } else { l.font.clone() }).chain(t.fonts.fallbacks.iter().cloned()).collect::<Vec<_>>().join(", ")); // theme fallbacks (e.g. its Arabic font) go before the view's built-in stack
     st.active_font_px = l.active_size;
     st.font_px = l.size;
     st.line_gap = l.line_gap;
