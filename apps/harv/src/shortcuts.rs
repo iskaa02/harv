@@ -13,6 +13,7 @@ const SECTIONS: &[(&str, &[(&str, &str)])] = &[
         ("Like the current song", "Ctrl + L"),
     ]),
     ("Navigation", &[
+        ("Command palette: go anywhere, run anything", "Ctrl + K"),
         ("Search", "Ctrl + F"),
         ("Preferences", "Ctrl + ,"),
         ("Close now playing / full screen", "Esc"),

@@ -49,10 +49,47 @@ pub struct Built {
     pub select: Rc<dyn Fn(Option<Root>)>,
 }
 
+/// The theme's sidebar items, section headings included.
+fn base_items(cfg: &Cfg) -> Vec<String> {
+    if cfg.style == "classic" || cfg.items.is_empty() { CLASSIC_ITEMS.iter().map(|s| s.to_string()).collect() } else { cfg.items.clone() }
+}
+
+/// The page items a user can reorder or hide (everything but section headings), in the theme's order, each with the index of its section
+/// (items only move within their section).
+pub fn page_items(cfg: &Cfg) -> Vec<(String, usize)> {
+    let mut seg = 0;
+    base_items(cfg).into_iter().filter_map(|i| if i.starts_with("section:") { seg += 1; None } else { Some((i, seg)) }).collect()
+}
+
+/// Label of a page item for Preferences.
+pub fn item_label(ctx: &Ctx, id: &str) -> String { item(id).map_or_else(|| id.to_string(), |(_, key, _)| ctx.word(key)) }
+
+/// The user's sidebar choices: the order they gave (ids) and the ids they hid.
+pub fn user_layout(ctx: &Ctx) -> (Vec<String>, Vec<String>) { (ctx.store.get("sidebar_order").unwrap_or_default(), ctx.store.get("sidebar_hidden").unwrap_or_default()) }
+
+/// Apply the user's order within each section (headings stay where the theme put them) and drop hidden items and headings left empty.
+fn arrange(items: Vec<String>, order: &[String], hidden: &[String]) -> Vec<String> {
+    let mut out: Vec<String> = vec![];
+    let mut segment: Vec<String> = vec![];
+    let mut heading: Option<String> = None;
+    let mut flush = |heading: &mut Option<String>, segment: &mut Vec<String>, out: &mut Vec<String>| {
+        segment.sort_by_key(|id| order.iter().position(|o| o == id).unwrap_or(usize::MAX));
+        segment.retain(|id| !hidden.contains(id));
+        if !segment.is_empty() { if let Some(h) = heading.take() { out.push(h); } out.append(segment); }
+        *heading = None;
+    };
+    for id in items {
+        if id.starts_with("section:") { flush(&mut heading, &mut segment, &mut out); heading = Some(id); } else { segment.push(id); }
+    }
+    flush(&mut heading, &mut segment, &mut out);
+    out
+}
+
 pub fn build(ctx: &Rc<Ctx>, cfg: &Cfg, on_root: Rc<dyn Fn(Root)>, compact: &Rc<Compact>) -> Built {
     let width = ctx.theme().metrics.sidebar_w;
     let classic = cfg.style == "classic";
-    let items: Vec<String> = if classic || cfg.items.is_empty() { CLASSIC_ITEMS.iter().map(|s| s.to_string()).collect() } else { cfg.items.clone() };
+    let (order, hidden) = user_layout(ctx);
+    let items = arrange(base_items(cfg), &order, &hidden);
     let (brand, prefs_row) = if classic { (true, true) } else { (cfg.brand, cfg.prefs) };
 
     let sidebar = gtk::Box::new(gtk::Orientation::Vertical, 0);

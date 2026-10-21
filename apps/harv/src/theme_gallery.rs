@@ -56,7 +56,7 @@ fn open_path(path: &Path) -> Result<(), glib::Error> {
 // ── gallery ──────────────────────────────────────────────────────────────────────────────────
 
 /// (Re)build the gallery into `holder`: one card per theme, then the "Open themes folder" button.
-pub fn fill(holder: &gtk::Box, ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) {
+pub fn fill(holder: &gtk::Box, ctx: &Rc<Ctx>, dialog: &adw::Dialog) {
     load_css();
     while let Some(child) = holder.first_child() { holder.remove(&child); }
     let Some(skin) = theme::skin() else { return };
@@ -84,12 +84,12 @@ pub fn fill(holder: &gtk::Box, ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) {
 }
 
 /// Rebuild the gallery after the current idle work (a card can't be destroyed inside its own click handler).
-fn refresh_later(holder: &gtk::Box, ctx: &Rc<Ctx>, dialog: &adw::PreferencesDialog) {
+fn refresh_later(holder: &gtk::Box, ctx: &Rc<Ctx>, dialog: &adw::Dialog) {
     let (h, c, d) = (holder.clone(), ctx.clone(), dialog.clone());
     glib::idle_add_local_once(move || fill(&h, &c, &d));
 }
 
-fn card(ctx: &Rc<Ctx>, holder: &gtk::Box, dialog: &adw::PreferencesDialog, e: &Entry, t: Rc<Theme>, current: bool, fonts: &HashSet<String>) -> gtk::Box {
+fn card(ctx: &Rc<Ctx>, holder: &gtk::Box, dialog: &adw::Dialog, e: &Entry, t: Rc<Theme>, current: bool, fonts: &HashSet<String>) -> gtk::Box {
     let card = gtk::Box::new(gtk::Orientation::Vertical, 6);
     card.add_css_class("theme-card");
     if current { card.add_css_class("current"); }
@@ -97,18 +97,12 @@ fn card(ctx: &Rc<Ctx>, holder: &gtk::Box, dialog: &adw::PreferencesDialog, e: &E
     card.append(&swatch(t.clone()));
 
     // Name in the theme's own font, with a check on the current one.
-    let stack = std::iter::once(t.fonts.ui.clone()).chain(t.fonts.fallbacks.iter().cloned()).collect::<Vec<_>>().join(", ");
     let title = gtk::Label::builder().label(&t.meta.name).xalign(0.0).ellipsize(pango::EllipsizeMode::End).hexpand(true).build();
-    title.set_attributes(Some(&font_attrs(&stack, 13)));
+    title.set_attributes(Some(&font_attrs(&t.fonts.ui, 13)));
     let caption = gtk::Box::new(gtk::Orientation::Horizontal, 6);
     caption.append(&title);
     if current { caption.append(&gtk::Image::from_icon_name("object-select-symbolic")); }
     card.append(&caption);
-
-    // A type specimen: Latin + Arabic, so the font pair is visible (the lyrics use the same stack).
-    let specimen = gtk::Label::builder().label("Aa Bb 123  ·  أبجد هوز").xalign(0.0).ellipsize(pango::EllipsizeMode::End).build();
-    specimen.set_attributes(Some(&font_attrs(&stack, 11)));
-    card.append(&specimen);
 
     // Facts: scheme · lyrics page · origin, plus a warning when the UI font is missing.
     let installed_font = fonts.contains(&t.fonts.ui.to_lowercase());
@@ -124,7 +118,7 @@ fn card(ctx: &Rc<Ctx>, holder: &gtk::Box, dialog: &adw::PreferencesDialog, e: &E
     card
 }
 
-fn activate(ctx: &Rc<Ctx>, holder: &gtk::Box, dialog: &adw::PreferencesDialog, id: &str) {
+fn activate(ctx: &Rc<Ctx>, holder: &gtk::Box, dialog: &adw::Dialog, id: &str) {
     let Some(skin) = theme::skin() else { return };
     match skin.switch(ctx, id) {
         Ok(()) => { let _ = ctx.store.set("theme", &id.to_string()); }

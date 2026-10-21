@@ -16,7 +16,7 @@ thread_local! {
     pub(crate) static MOODS: RefCell<Option<Vec<Mood>>> = RefCell::default();
 }
 
-/// Header bar + clamped, scrollable content.
+/// Header bar + clamped, scrollable content. The bar's title stays hidden until the page's own large title scrolls away.
 pub fn shell(title: &str, content: &impl IsA<gtk::Widget>, header_extra: Option<gtk::Widget>) -> adw::NavigationPage {
     let clamp = adw::Clamp::builder().maximum_size(1180).tightening_threshold(800).child(content).build();
     clamp.set_margin_bottom(24);
@@ -25,6 +25,11 @@ pub fn shell(title: &str, content: &impl IsA<gtk::Widget>, header_extra: Option<
     let hb = adw::HeaderBar::new();
     hb.add_css_class("flat");
     if let Some(w) = header_extra { hb.pack_end(&w); }
+    {
+        let label = gtk::Label::builder().label(title).css_classes(["title"]).ellipsize(pango::EllipsizeMode::End).opacity(0.0).build();
+        hb.set_title_widget(Some(&label));
+        scroll.vadjustment().connect_value_changed(move |a| label.set_opacity(((a.value() - 40.0) / 32.0).clamp(0.0, 1.0)));
+    }
     tv.add_top_bar(&hb);
     tv.set_content(Some(&scroll));
     adw::NavigationPage::builder().title(title).child(&tv).build()
@@ -85,9 +90,11 @@ pub fn home(ctx: &Rc<Ctx>) -> adw::NavigationPage {
                     let cards = tracks.iter().enumerate().map(|(i, t)| { let (c, all) = (c2.clone(), all.clone()); let w = card(&c2, t.thumb.as_deref(), &t.title, &t.artist_line(), false, move || c.play_row(all.to_vec(), i, kind)); crate::actions::attach_context_menu(&w, &c2, crate::actions::fixed(t.clone()), Default::default()); w }).collect();
                     Some(shelf(title, cards))
                 };
-                if let Some(s) = local(&c2.word("recent"), rows_to_tracks(c2.store.recently_played(15, 0).unwrap_or_default()), QueueKind::Songs) { col.append(&s); }
-                if let Some(s) = local(&c2.word("favorites"), rows_to_tracks(c2.store.liked_songs(15, 0).unwrap_or_default()), QueueKind::Songs) { col.append(&s); }
+                let show = |key: &str| c2.store.get::<bool>(key).unwrap_or(true);
+                if show("home_recent") { if let Some(s) = local(&c2.word("recent"), rows_to_tracks(c2.store.recently_played(15, 0).unwrap_or_default()), QueueKind::Songs) { col.append(&s); } }
+                if show("home_favorites") { if let Some(s) = local(&c2.word("favorites"), rows_to_tracks(c2.store.liked_songs(15, 0).unwrap_or_default()), QueueKind::Songs) { col.append(&s); } }
                 match res {
+                    _ if !show("home_yt") => {}
                     Ok(shelves) => for sh in shelves {
                         let cards: Vec<gtk::Widget> = sh.items.iter().filter_map(|i| {
                             let c = c2.clone();
@@ -660,6 +667,7 @@ pub fn library(ctx: &Rc<Ctx>, which: Lib) -> adw::NavigationPage {
                     })));
                 }
             }
+            if let Some(state) = find_state(col.upcast_ref()) { add_state_actions(&ctx, &state, which); }
             swap(&holder, &col.upcast());
         }
     });
@@ -667,6 +675,34 @@ pub fn library(ctx: &Rc<Ctx>, which: Lib) -> adw::NavigationPage {
     // Lists are cheap to rebuild, and likes/plays change them: refresh whenever the page comes back into view.
     page.connect_showing({ let b = build.clone(); move |_| b() });
     page
+}
+
+/// The empty-state box (css class `state`) somewhere inside `w`.
+fn find_state(w: &gtk::Widget) -> Option<gtk::Box> {
+    if w.has_css_class("state") { return w.clone().downcast().ok(); }
+    let mut c = w.first_child();
+    while let Some(child) = c { if let Some(f) = find_state(&child) { return Some(f); } c = child.next_sibling(); }
+    None
+}
+
+/// A way forward under an empty library page's explanation.
+fn add_state_actions(ctx: &Rc<Ctx>, state: &gtk::Box, which: Lib) {
+    use crate::window::Root;
+    let go = |icon: &str, label: &str, nav: Nav, suggested: bool| {
+        let b = pill_button(icon, label, if suggested { &["pill", "suggested-action"] } else { &["pill"] });
+        let ctx = ctx.clone();
+        b.connect_clicked(move |_| ctx.navigate(nav.clone()));
+        b
+    };
+    let row = gtk::Box::builder().orientation(gtk::Orientation::Horizontal).spacing(8).halign(gtk::Align::Center).margin_top(14).build();
+    match which {
+        Lib::Favorites => { row.append(&go("view-sort-descending-symbolic", "Browse charts", Nav::Root(Root::Charts), true)); row.append(&go("document-open-symbolic", "Import from SimpMusic…", Nav::Settings, false)); }
+        Lib::Recent | Lib::MostPlayed => row.append(&go("system-search-symbolic", "Find something to play", Nav::Root(Root::Search), true)),
+        Lib::Downloads => row.append(&go("system-search-symbolic", "Find songs", Nav::Root(Root::Search), true)),
+        Lib::Following => row.append(&go("system-search-symbolic", "Find artists", Nav::Root(Root::Search), true)),
+        Lib::Playlists => return,
+    }
+    state.append(&row);
 }
 
 pub(crate) fn detail_header_simple(title: &str, buttons: Vec<gtk::Widget>) -> gtk::Widget {

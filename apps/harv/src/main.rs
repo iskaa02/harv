@@ -1,6 +1,7 @@
 mod actions;
 mod components;
 mod ctx;
+mod palette;
 mod effects;
 mod fonts;
 mod miniplayer;
@@ -53,6 +54,8 @@ struct Opts {
     anim_frames: bool,
     queue: bool,
     settings: bool,
+    /// Open the command palette with this text typed.
+    palette: Option<String>,
     /// Screenshot aid: switch to this theme ~2.5 s after startup (exercises live theme switching).
     switch_to: Option<String>,
     /// Screenshot aid: play this album (browse id) as the queue, so queue-driven UI has data.
@@ -83,6 +86,7 @@ fn parse_args() -> Opts {
             "--then-play" => o.then_play = a.next(),
             "--queue" => o.queue = true,
             "--settings" => o.settings = true,
+            "--palette" => o.palette = a.next(),
             "--switch-to" => o.switch_to = a.next(),
             "--play-album" => o.play_album = a.next(),
             _ => {}
@@ -147,6 +151,7 @@ fn build(app: &adw::Application, opts: &Opts, rt: &tokio::runtime::Handle) -> an
     let skin = theme::Skin::install(opts.watch);
     skin.set_initial_mode(theme::Mode::parse(&std::env::var("HARV_MODE").ok().or_else(|| store.get::<String>("color_mode")).unwrap_or_default()));
     let spec = opts.theme.clone().or_else(|| std::env::var("HARV_THEME").ok()).or_else(|| store.get::<String>("theme")).unwrap_or_else(|| theme_core::DEFAULT.into());
+    skin.set_density(store.get::<u32>("ui_density").unwrap_or(1));
     let active = skin.load_or_default(&spec);
     skin.apply_initial(&active);
     let ytm = Arc::new(rt.block_on(Ytm::new())?);
@@ -268,6 +273,7 @@ fn script(ctx: &Rc<Ctx>, w: &window::Window, o: &Opts) {
     if o.now_playing { ctx.navigate(Nav::NowPlaying); }
     if o.queue { ctx.navigate(Nav::Queue); }
     if o.settings { ctx.navigate(Nav::Settings); }
+    if let Some(q) = &o.palette { palette::toggle(ctx, &w.show_root, if q == "-" { "" } else { q }); }
     if let Some(id) = o.play_album.clone() {
         let (ytm, c) = (ctx.ytm.clone(), ctx.clone());
         let seek = o.seek;

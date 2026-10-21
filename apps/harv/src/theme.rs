@@ -52,6 +52,8 @@ pub struct Skin {
     /// The spec (id or path) of the active theme, for reloads.
     spec: RefCell<String>,
     mode: Cell<Mode>,
+    /// Preferences → Layout → Density: 0 compact, 1 comfortable (the theme's own row height), 2 spacious.
+    density: Cell<u32>,
 }
 
 thread_local! { static SKIN: RefCell<Option<Rc<Skin>>> = const { RefCell::new(None) }; }
@@ -67,12 +69,17 @@ impl Skin {
         gtk::style_context_add_provider_for_display(&gdk::Display::default().unwrap(), &provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
         let mut dirs = vec![theme_core::user_theme_dir()];
         if watch { dirs.insert(0, PathBuf::from(DEV_THEMES)); }
-        let skin = Rc::new(Skin { provider, loader: Loader::new(dirs), watch, spec: RefCell::new(theme_core::DEFAULT.into()), mode: Cell::new(Mode::Dark) });
+        let skin = Rc::new(Skin { provider, loader: Loader::new(dirs), watch, spec: RefCell::new(theme_core::DEFAULT.into()), mode: Cell::new(Mode::Dark), density: Cell::new(1) });
         SKIN.with(|s| *s.borrow_mut() = Some(skin.clone()));
         skin
     }
 
     pub fn mode(&self) -> Mode { self.mode.get() }
+
+    pub fn density(&self) -> u32 { self.density.get() }
+
+    /// Set the row density; takes effect on the next [`Skin::switch`] (or at startup, before the first load).
+    pub fn set_density(&self, d: u32) { self.density.set(d.min(2)); crate::rows::set_density(d); }
 
     /// Startup: set the mode before the first [`Skin::load_or_default`].
     pub fn set_initial_mode(&self, mode: Mode) { self.mode.set(mode); }
@@ -85,7 +92,15 @@ impl Skin {
     }
 
     /// Load a theme in the current scheme.
-    fn load_resolved(&self, spec: &str) -> Result<Theme, String> { let light = self.sync_scheme(); self.loader.load(spec).map(|t| t.resolved(light)) }
+    fn load_resolved(&self, spec: &str) -> Result<Theme, String> {
+        let light = self.sync_scheme();
+        self.loader.load(spec).map(|t| {
+            let mut t = t.resolved(light);
+            // Density scales the theme's own row height; the middle setting leaves the theme untouched.
+            t.metrics.track_row_h = match self.density.get() { 0 => (t.metrics.track_row_h * 4 + 2) / 5, 2 => t.metrics.track_row_h * 5 / 4, _ => t.metrics.track_row_h };
+            t
+        })
+    }
 
     /// Change the mode and repaint the active theme in it.
     pub fn set_mode(&self, ctx: &Rc<Ctx>, mode: Mode) -> Result<(), String> {

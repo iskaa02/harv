@@ -34,14 +34,14 @@ pub fn build(app: &adw::Application, ctx: &Rc<Ctx>, size: (i32, i32)) -> Window 
     let compact = Rc::new(Compact::default());
 
     // ---- root pages (Home and Search keep their state)
-    let home = pages::home(ctx);
+    let home = Rc::new(RefCell::new(pages::home(ctx)));
     let search = Rc::new(RefCell::new(pages::search(ctx, None)));
     let select_cell: Rc<RefCell<Rc<dyn Fn(Option<Root>)>>> = Rc::new(RefCell::new(Rc::new(|_| {})));
     let current: Rc<Cell<Option<Root>>> = Rc::new(Cell::new(None));
     let show_root: Rc<dyn Fn(Root)> = Rc::new({
         let (nav, ctx, home, search, select_cell, current) = (nav.clone(), ctx.clone(), home.clone(), search.clone(), select_cell.clone(), current.clone());
         move |r| {
-            let page = match r { Root::Home => home.clone(), Root::Search => search.borrow().clone(), Root::Charts => pages::charts(&ctx), Root::Lib(l) => pages::library(&ctx, l), Root::Now => components::now::page(&ctx) };
+            let page = match r { Root::Home => home.borrow().clone(), Root::Search => search.borrow().clone(), Root::Charts => pages::charts(&ctx), Root::Lib(l) => pages::library(&ctx, l), Root::Now => components::now::page(&ctx) };
             current.set(Some(r));
             nav.replace(&[page]);
             let select = select_cell.borrow().clone();
@@ -166,14 +166,16 @@ pub fn build(app: &adw::Application, ctx: &Rc<Ctx>, size: (i32, i32)) -> Window 
 
     // ---- theme changes: rebuild what depends on the shell/layout, refresh the current page
     {
-        let (ctx2, rebuild_sidebar, rebuild_bar, update_panel, ensure_np, show, search, current) = (ctx.clone(), rebuild_sidebar.clone(), rebuild_bar.clone(), update_panel.clone(), ensure_np.clone(), show_root.clone(), search.clone(), current.clone());
+        let (ctx2, rebuild_sidebar, rebuild_bar, update_panel, ensure_np, show, search, current, home) = (ctx.clone(), rebuild_sidebar.clone(), rebuild_bar.clone(), update_panel.clone(), ensure_np.clone(), show_root.clone(), search.clone(), current.clone(), home.clone());
         let first = Cell::new(true);
+        let seen_gen = Cell::new(ctx.layout_gen.get());
         ctx.on_theme(move |t| {
             if first.replace(false) { return; } // the initial values were applied above
             rebuild_sidebar();
             rebuild_bar();
             if t.shell.now_playing.host == "fullscreen" { ensure_np(); }
             *search.borrow_mut() = pages::search(&ctx2, None);
+            if seen_gen.replace(ctx2.layout_gen.get()) != ctx2.layout_gen.get() { *home.borrow_mut() = pages::home(&ctx2); }
             update_panel(true);
             if let Some(r) = current.get() { show(r); }
         });
@@ -185,8 +187,9 @@ pub fn build(app: &adw::Application, ctx: &Rc<Ctx>, size: (i32, i32)) -> Window 
 
     // ---- navigation
     {
-        let (nav, stack, ctx2, win2, np2) = (nav.clone(), stack.clone(), ctx.clone(), win.clone(), np.clone());
+        let (nav, stack, ctx2, win2, np2, show) = (nav.clone(), stack.clone(), ctx.clone(), win.clone(), np.clone(), show_root.clone());
         ctx.set_nav(move |n| match n {
+            Nav::Root(r) => show(r),
             Nav::Album(id) => nav.push(&pages::album(&ctx2, &id)),
             Nav::Artist(id) => nav.push(&pages::artist(&ctx2, &id)),
             Nav::Playlist(id) => nav.push(&pages::playlist(&ctx2, &id)),
@@ -224,6 +227,7 @@ pub fn build(app: &adw::Application, ctx: &Rc<Ctx>, size: (i32, i32)) -> Window 
             let focus = gtk::prelude::GtkWindowExt::focus(&win2);
             let typing = focus.as_ref().is_some_and(|w| w.is::<gtk::Text>() || w.is::<gtk::Entry>() || w.is::<gtk::TextView>());
             let ctrl = state.contains(gdk::ModifierType::CONTROL_MASK);
+            if ctrl && key == gdk::Key::k { crate::palette::toggle(&ctx2, &show, ""); return gtk::glib::Propagation::Stop; }
             if ctrl && key == gdk::Key::f { close_full(&stack, &np_f); show(Root::Search); return gtk::glib::Propagation::Stop; }
             if typing { return gtk::glib::Propagation::Proceed; }
             if ctrl && key == gdk::Key::l {

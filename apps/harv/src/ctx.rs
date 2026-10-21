@@ -28,6 +28,8 @@ pub enum Nav {
     /// (category params, title)
     Mood(String, String),
     MiniPlayer,
+    /// A top-level page, as if picked in the sidebar.
+    Root(crate::window::Root),
 }
 
 /// Widgets that mirror global state (liked heart, "playing" highlight) register here; dead ones are pruned.
@@ -58,6 +60,8 @@ pub struct Ctx {
     accent_hooks: RefCell<Vec<Rc<dyn Fn()>>>,
     /// The toast with an action button now on screen; replaced (not queued behind) by the next one.
     action_toast: RefCell<Option<adw::Toast>>,
+    /// Bumped by [`Ctx::relayout`]: pages that fetch data (Home) rebuild only when a layout preference changed, not on every theme switch.
+    pub layout_gen: Cell<u32>,
 }
 
 use std::sync::Arc;
@@ -65,7 +69,7 @@ use std::sync::Arc;
 impl Ctx {
     pub fn new(rt: tokio::runtime::Handle, ytm: Arc<Ytm>, store: Store, engine: Engine, lyrics: LyricsService, theme: Rc<theme_core::Theme>) -> Rc<Self> {
         let images = Images::new(rt.clone());
-        Rc::new(Self { rt, ytm, store, engine, lyrics, images, snap: RefCell::new(None), hooks: RefCell::default(), rows: RefCell::default(), toasts: adw::ToastOverlay::new(), accent: gtk::CssProvider::new(), last_cover: Cell::new(None), nav: RefCell::default(), pending: Cell::new(0), theme: RefCell::new(theme), theme_hooks: RefCell::default(), accent_rgb: Cell::new([1.0, 0.22, 0.37]), accent_hooks: RefCell::default(), action_toast: RefCell::default() })
+        Rc::new(Self { rt, ytm, store, engine, lyrics, images, snap: RefCell::new(None), hooks: RefCell::default(), rows: RefCell::default(), toasts: adw::ToastOverlay::new(), accent: gtk::CssProvider::new(), last_cover: Cell::new(None), nav: RefCell::default(), pending: Cell::new(0), theme: RefCell::new(theme), theme_hooks: RefCell::default(), accent_rgb: Cell::new([1.0, 0.22, 0.37]), accent_hooks: RefCell::default(), action_toast: RefCell::default(), layout_gen: Cell::new(0) })
     }
 
     // ── async glue ───────────────────────────────────────────────────────────────────────────
@@ -100,6 +104,9 @@ impl Ctx {
         let hooks: Vec<_> = self.theme_hooks.borrow().clone();
         for h in hooks { h(&t); }
     }
+
+    /// Re-run the theme hooks with the unchanged theme: sidebar, bar and the page on top rebuild (layout preferences changed).
+    pub fn relayout(&self) { self.layout_gen.set(self.layout_gen.get() + 1); let t = self.theme(); self.set_theme(t); }
 
     /// Run `f` now and on every theme change.
     pub fn on_theme(&self, f: impl Fn(&theme_core::Theme) + 'static) {

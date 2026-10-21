@@ -4,7 +4,7 @@ use crate::ctx::{Ctx, Nav};
 use adw::prelude::*;
 use gtk::{glib, pango};
 use player_core::{Command, QueueKind};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
 use std::rc::Rc;
 use ytm_core::Track;
@@ -148,7 +148,7 @@ pub fn track_list(ctx: &Rc<Ctx>, tracks: Vec<Track>, kind: QueueKind, extras: Ro
     let root = gtk::Box::new(gtk::Orientation::Vertical, 6);
     let list = gtk::ListBox::builder().selection_mode(gtk::SelectionMode::None).css_classes(["track-list"]).activate_on_single_click(true).build();
     let look = extras.look;
-    let px = if extras.cover_px > 0 { extras.cover_px } else { match look { Look::Table => 36, _ => 40 } };
+    let px = if extras.cover_px > 0 { row_px(extras.cover_px) } else { row_px(match look { Look::Table => 36, _ => 40 }) };
     let checks: Rc<RefCell<Vec<gtk::CheckButton>>> = Rc::default();
     let selecting = Rc::new(std::cell::Cell::new(false));
     let select = gtk::ToggleButton::builder().label("Select").css_classes(["flat", "pill-btn"]).build();
@@ -178,7 +178,7 @@ pub fn track_list(ctx: &Rc<Ctx>, tracks: Vec<Track>, kind: QueueKind, extras: Ro
             table_body(&h, ctx, t, i, &extras, look, px)
         } else {
         if extras.numbered { h.append(&gtk::Label::builder().label((i + 1).to_string()).xalign(1.0).width_chars(2).valign(gtk::Align::Center).css_classes(["track-num"]).build()); }
-        else { h.append(&art(ctx, t.thumb.as_deref(), 40)); }
+        else { h.append(&art(ctx, t.thumb.as_deref(), row_px(40))); }
         let col = gtk::Box::new(gtk::Orientation::Vertical, 1);
         col.set_hexpand(true);
         col.set_valign(gtk::Align::Center);
@@ -412,10 +412,24 @@ pub fn add_to_playlist(ctx: &Rc<Ctx>, tracks: Vec<Track>) {
 }
 
 /// A carousel card: cover (with a play badge that fades in on hover), title, subtitle. `on_click` fires on press.
+thread_local! { static DENSITY: Cell<u32> = const { Cell::new(1) }; }
+
+/// Preferences → Layout → Density (0 compact, 1 comfortable, 2 spacious): scales the cover in song rows along with the row height.
+pub fn set_density(d: u32) { DENSITY.with(|c| c.set(d.min(2))); }
+fn row_px(base: i32) -> i32 { match DENSITY.with(|c| c.get()) { 0 => base * 4 / 5, 2 => base * 6 / 5, _ => base } }
+
+thread_local! { static CARD_PX: Cell<i32> = const { Cell::new(160) }; }
+
+/// Preferences → Layout → Card size: the cover edge of shelf cards, px. Read when a card is built.
+pub fn set_card_px(px: i32) { CARD_PX.with(|c| c.set(px.clamp(100, 260))); }
+pub fn card_px() -> i32 { CARD_PX.with(|c| c.get()) }
+
 pub fn card(ctx: &Rc<Ctx>, thumb: Option<&str>, title: &str, subtitle: &str, round: bool, on_click: impl Fn() + 'static) -> gtk::Widget {
     let b = gtk::Button::builder().css_classes(["flat", "card-btn"]).build();
     let col = gtk::Box::new(gtk::Orientation::Vertical, 6);
-    let a = art(ctx, thumb, 160);
+    let px = card_px();
+    let chars = (px / 10).max(10);
+    let a = art(ctx, thumb, px);
     a.set_halign(gtk::Align::Start);
     if round { a.add_css_class("round"); }
     let ov = gtk::Overlay::builder().child(&a).halign(gtk::Align::Start).build();
@@ -426,8 +440,8 @@ pub fn card(ctx: &Rc<Ctx>, thumb: Option<&str>, title: &str, subtitle: &str, rou
     badge.append(&icon);
     ov.add_overlay(&badge);
     col.append(&ov);
-    col.append(&gtk::Label::builder().label(title).xalign(0.0).ellipsize(pango::EllipsizeMode::End).max_width_chars(16).width_chars(16).css_classes(["card-title"]).build());
-    col.append(&gtk::Label::builder().label(subtitle).xalign(0.0).ellipsize(pango::EllipsizeMode::End).max_width_chars(16).width_chars(16).css_classes(["card-sub"]).build());
+    col.append(&gtk::Label::builder().label(title).xalign(0.0).ellipsize(pango::EllipsizeMode::End).max_width_chars(chars).width_chars(chars).css_classes(["card-title"]).build());
+    col.append(&gtk::Label::builder().label(subtitle).xalign(0.0).ellipsize(pango::EllipsizeMode::End).max_width_chars(chars).width_chars(chars).css_classes(["card-sub"]).build());
     b.set_child(Some(&col));
     b.connect_clicked(move |_| on_click());
     b.upcast()
@@ -552,11 +566,12 @@ pub fn skeleton_shelves() -> gtk::Widget {
     for _ in 0..2 {
         let s = gtk::Box::new(gtk::Orientation::Vertical, 10);
         s.append(&bone(170, 18, true));
+        let px = card_px();
         let r = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         for _ in 0..5 {
             let c = gtk::Box::new(gtk::Orientation::Vertical, 8);
             c.set_margin_start(8);
-            c.append(&bone(160, 160, false));
+            c.append(&bone(px, px, false));
             c.append(&bone(120, 11, true));
             c.append(&bone(80, 9, true));
             r.append(&c);

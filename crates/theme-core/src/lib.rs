@@ -19,12 +19,11 @@ pub type Result<T> = std::result::Result<T, String>;
 pub const BUILTIN: &[(&str, &str, &str)] = &[
     ("blur", include_str!("../themes/blur/theme.toml"), include_str!("../themes/blur/style.css")),
     ("harv", include_str!("../themes/harv/theme.toml"), include_str!("../themes/harv/style.css")),
-    ("lagoon", include_str!("../themes/lagoon/theme.toml"), include_str!("../themes/lagoon/style.css")),
 ];
 pub const DEFAULT: &str = "blur";
 
 /// Old theme ids (saved preferences, user themes that `extends` them) and what they were renamed to.
-const RENAMED: &[(&str, &str)] = &[("classic", "blur"), ("mixer", "harv"), ("rawi", "harv"), ("night-console", "lagoon")];
+const RENAMED: &[(&str, &str)] = &[("classic", "blur"), ("mixer", "harv"), ("rawi", "harv"), ("night-console", "blur"), ("lagoon", "blur")];
 fn current_id(id: &str) -> &str { RENAMED.iter().find(|(old, _)| *old == id).map_or(id, |(_, new)| new) }
 
 #[derive(Deserialize, Clone, Copy, Debug, PartialEq, Eq)]

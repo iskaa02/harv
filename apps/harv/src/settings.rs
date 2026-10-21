@@ -4,6 +4,7 @@ use crate::ctx::Ctx;
 use adw::prelude::*;
 use gtk::{gio, glib};
 use player_core::Command;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 use ytm_core::Quality;
@@ -16,28 +17,93 @@ const SB_CATS: [(&str, &str, bool); 7] = [
 
 const QUALITIES: [(&str, &str, Quality); 4] = [("Low", "low", Quality::Low), ("Medium", "medium", Quality::Medium), ("High (Opus)", "high-opus", Quality::HighOpus), ("High (AAC)", "high-aac", Quality::HighAac)];
 
+/// Shelf cover sizes (label, px); index 1 is the default.
+const CARD_SIZES: [(&str, i32); 4] = [("Small", 128), ("Medium", 160), ("Large", 200), ("Huge", 240)];
+
+fn apply_card_size(i: u32) { crate::rows::set_card_px(CARD_SIZES[(i as usize).min(3)].1); }
+
+/// "Off" turns GTK's animations off (hover/press transitions, page and stack fades); "Follow system" restores what the desktop had at startup.
+fn apply_ui_motion(i: u32) {
+    thread_local! { static SYSTEM: Cell<Option<bool>> = const { Cell::new(None) }; }
+    let Some(settings) = gtk::Settings::default() else { return };
+    let system = SYSTEM.with(|s| { if s.get().is_none() { s.set(Some(settings.is_gtk_enable_animations())); } s.get().unwrap_or(true) });
+    settings.set_gtk_enable_animations(if i == 1 { false } else { system });
+}
+
+/// One row per sidebar page: up / down within its section, and a switch to hide it.
+fn fill_sidebar(ctx: &Rc<Ctx>, exp: &adw::ExpanderRow, rows: &Rc<RefCell<Vec<adw::ActionRow>>>) {
+    for r in rows.borrow_mut().drain(..) { exp.remove(&r); }
+    let items = crate::sidebar::page_items(&ctx.theme().shell.sidebar);
+    let (order, hidden) = crate::sidebar::user_layout(ctx);
+    let mut cur = items.clone();
+    cur.sort_by_key(|(id, seg)| (*seg, order.iter().position(|o| o == id).unwrap_or(usize::MAX)));
+    let ids: Vec<String> = cur.iter().map(|(id, _)| id.clone()).collect();
+    for (i, (id, seg)) in cur.iter().enumerate() {
+        let row = adw::ActionRow::builder().title(crate::sidebar::item_label(ctx, id)).build();
+        let same = |j: usize| cur.get(j).is_some_and(|(_, s)| s == seg);
+        let mover = |icon: &str, to: Option<usize>| {
+            let b = gtk::Button::builder().icon_name(icon).css_classes(["flat"]).valign(gtk::Align::Center).sensitive(to.is_some_and(same)).build();
+            if let Some(to) = to.filter(|t| same(*t)) {
+                let (c, e, r, v) = (ctx.clone(), exp.clone(), rows.clone(), ids.clone());
+                b.connect_clicked(move |_| { let mut v = v.clone(); v.swap(i, to); let _ = c.store.set("sidebar_order", &v); c.relayout(); fill_sidebar(&c, &e, &r); });
+            }
+            b
+        };
+        row.add_suffix(&mover("go-up-symbolic", i.checked_sub(1)));
+        row.add_suffix(&mover("go-down-symbolic", Some(i + 1)));
+        let sw = gtk::Switch::builder().valign(gtk::Align::Center).active(!hidden.contains(id)).build();
+        { let (c, id) = (ctx.clone(), id.clone()); sw.connect_active_notify(move |s| {
+            let mut h: Vec<String> = c.store.get("sidebar_hidden").unwrap_or_default();
+            h.retain(|x| *x != id);
+            if !s.is_active() { h.push(id.clone()); }
+            let _ = c.store.set("sidebar_hidden", &h);
+            c.relayout();
+        }); }
+        row.add_suffix(&sw);
+        exp.add_row(&row);
+        rows.borrow_mut().push(row);
+    }
+}
+
 fn mb(bytes: u64) -> String { format!("{:.1} MB", bytes as f64 / 1_048_576.0) }
+
+/// The theme gallery in a modal over Preferences.
+fn open_theme_picker(ctx: &Rc<Ctx>, parent: &adw::PreferencesDialog) {
+    let dialog = adw::Dialog::builder().title("Theme").content_width(900).content_height(640).build();
+    let holder = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    holder.set_margin_start(20);
+    holder.set_margin_end(20);
+    holder.set_margin_bottom(20);
+    crate::theme_gallery::fill(&holder, ctx, &dialog);
+    let scroll = gtk::ScrolledWindow::builder().child(&holder).hscrollbar_policy(gtk::PolicyType::Never).build();
+    let view = adw::ToolbarView::new();
+    view.add_top_bar(&adw::HeaderBar::new());
+    view.set_content(Some(&scroll));
+    dialog.set_child(Some(&view));
+    dialog.present(Some(parent));
+}
 
 pub fn show(ctx: &Rc<Ctx>) {
     let dialog = adw::PreferencesDialog::builder().title("Preferences").build();
     let page = adw::PreferencesPage::new();
     // Appearance
-    let g = adw::PreferencesGroup::builder().title("Appearance").description(format!("Click a theme to use it. Your own live in {}", crate::theme_gallery::user_dir_label())).build();
-    // Theme gallery: built-ins and user themes (colours, type, shape, vocabulary and layout switch live).
-    let holder = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    if crate::theme::skin().is_some() { crate::theme_gallery::fill(&holder, ctx, &dialog); }
+    let g = adw::PreferencesGroup::builder().title("Appearance").description(format!("Your own themes live in {}", crate::theme_gallery::user_dir_label())).build();
+    // Theme gallery lives in its own modal, opened from this row.
     if let Some(skin) = crate::theme::skin() {
         let style = adw::ComboRow::builder().title("Style").subtitle("Light, dark, or follow the system; every theme has both").model(&gtk::StringList::new(&crate::theme::Mode::ALL.map(|m| m.1))).build();
         style.set_selected(crate::theme::Mode::ALL.iter().position(|m| m.0 == skin.mode()).unwrap_or(0) as u32);
-        { let (c, d, h) = (ctx.clone(), dialog.clone(), holder.clone()); style.connect_selected_notify(move |r| {
+        { let c = ctx.clone(); style.connect_selected_notify(move |r| {
             let mode = crate::theme::Mode::ALL[(r.selected() as usize).min(2)].0;
             let Some(skin) = crate::theme::skin() else { return };
             if skin.mode() == mode { return; }
             match skin.set_mode(&c, mode) { Ok(()) => { let _ = c.store.set("color_mode", &mode.key().to_string()); } Err(e) => c.toast(&format!("Theme error: {e}")) }
-            crate::theme_gallery::fill(&h, &c, &d);
         }); }
+        let row = adw::ActionRow::builder().title("Theme").subtitle(ctx.theme().meta.name.as_str()).activatable(true).build();
+        row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
+        { let w = row.downgrade(); ctx.on_theme(move |t| { if let Some(r) = w.upgrade() { r.set_subtitle(&t.meta.name); } }); }
+        { let (c, d) = (ctx.clone(), dialog.clone()); row.connect_activated(move |_| open_theme_picker(&c, &d)); }
+        g.add(&row);
         g.add(&style);
-        g.add(&holder);
     }
     let acc = adw::ComboRow::builder().title("Accent colour").subtitle("Overrides the theme's accent unless set to From artwork").model(&gtk::StringList::new(&Ctx::ACCENTS.map(|a| a.0))).build();
     acc.set_selected(ctx.store.get::<u32>("accent").unwrap_or(0));
@@ -62,6 +128,57 @@ pub fn show(ctx: &Rc<Ctx>) {
     }
     page.add(&g);
 
+    // Layout: how dense and how animated the app is, what Home and the sidebar show. Every row applies live.
+    let g = adw::PreferencesGroup::builder().title("Layout").description("Each setting applies at once and overrides the theme's default").build();
+    let combo = |title: &str, subtitle: &str, opts: &[&str], key: &str, default: u32| {
+        let row = adw::ComboRow::builder().title(title).subtitle(subtitle).model(&gtk::StringList::new(opts)).build();
+        row.set_selected(ctx.store.get::<u32>(key).unwrap_or(default));
+        row
+    };
+    let density = combo("Density", "Height of song rows", &["Compact", "Comfortable", "Spacious"], "ui_density", 1);
+    { let c = ctx.clone(); density.connect_selected_notify(move |r| {
+        let _ = c.store.set("ui_density", &r.selected());
+        let Some(skin) = crate::theme::skin() else { return };
+        skin.set_density(r.selected());
+        let spec = skin.current_id();
+        if let Err(e) = skin.switch(&c, &spec) { c.toast(&format!("Theme error: {e}")); }
+    }); }
+    g.add(&density);
+    let cards = combo("Card size", "Size of album and playlist covers on shelves", &CARD_SIZES.map(|c| c.0), "card_size", 1);
+    { let c = ctx.clone(); cards.connect_selected_notify(move |r| { let _ = c.store.set("card_size", &r.selected()); apply_card_size(r.selected()); c.relayout(); }); }
+    g.add(&cards);
+    let motion = combo("Interface motion", "Hover, press and page transitions. Follow system respects your desktop's reduce-motion setting", &["Follow system", "Off"], "ui_motion", 0);
+    { let c = ctx.clone(); motion.connect_selected_notify(move |r| { let _ = c.store.set("ui_motion", &r.selected()); apply_ui_motion(r.selected()); }); }
+    g.add(&motion);
+    let home = adw::ExpanderRow::builder().title("Home shelves").subtitle("Choose what the Home page shows").build();
+    for (key, title) in [("home_recent", "Recently played"), ("home_favorites", "Favorites"), ("home_yt", "From YouTube Music")] {
+        let row = adw::SwitchRow::builder().title(title).active(ctx.store.get::<bool>(key).unwrap_or(true)).build();
+        { let c = ctx.clone(); row.connect_active_notify(move |r| { let _ = c.store.set(key, &r.is_active()); c.relayout(); }); }
+        home.add_row(&row);
+    }
+    g.add(&home);
+    let side = adw::ExpanderRow::builder().title("Sidebar pages").subtitle("Show, hide and reorder (within each section)").build();
+    let side_rows: Rc<RefCell<Vec<adw::ActionRow>>> = Rc::default();
+    fill_sidebar(ctx, &side, &side_rows);
+    g.add(&side);
+    let reset = adw::ActionRow::builder().title("Reset layout").subtitle("Back to the theme's own density, covers, sidebar and Home").build();
+    let b = gtk::Button::builder().label("Reset").valign(gtk::Align::Center).build();
+    { let (c, d) = (ctx.clone(), dialog.clone()); b.connect_clicked(move |_| {
+        for k in ["ui_density", "card_size"] { let _ = c.store.set(k, &1u32); }
+        let _ = c.store.set("ui_motion", &0u32);
+        for k in ["home_recent", "home_favorites", "home_yt"] { let _ = c.store.set(k, &true); }
+        for k in ["sidebar_order", "sidebar_hidden"] { let _ = c.store.set(k, &Vec::<String>::new()); }
+        apply_card_size(1);
+        apply_ui_motion(0);
+        if let Some(skin) = crate::theme::skin() { skin.set_density(1); let spec = skin.current_id(); let _ = skin.switch(&c, &spec); }
+        c.relayout();
+        d.close();
+        let c = c.clone();
+        glib::idle_add_local_once(move || show(&c));
+    }); }
+    reset.add_suffix(&b);
+    g.add(&reset);
+    page.add(&g);
 
     // Playback
     let g = adw::PreferencesGroup::builder().title("Playback").build();
@@ -226,6 +343,8 @@ fn apply_motion(i: u32) {
 /// Re-apply saved crossfade, SponsorBlock and cookies settings at startup.
 pub fn restore(ctx: &Rc<Ctx>) {
     apply_motion(ctx.store.get::<u32>("backdrop_motion").unwrap_or(2));
+    apply_card_size(ctx.store.get::<u32>("card_size").unwrap_or(1));
+    apply_ui_motion(ctx.store.get::<u32>("ui_motion").unwrap_or(0));
     let cats: Vec<String> = ctx.store.get("sponsorblock").unwrap_or_default();
     ctx.engine.send(Command::SetCrossfade(ctx.store.get::<u64>("crossfade_ms").unwrap_or(0)));
     ctx.engine.send(Command::SetSponsorBlock(cats));
