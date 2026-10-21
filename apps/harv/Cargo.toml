@@ -1,6 +1,6 @@
 [package]
 name = "harv"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 license = "GPL-3.0-or-later"
 description = "GTK4 YouTube Music player with an Apple-Music-style synced lyrics screen"
@@ -27,6 +27,7 @@ theme-core = { path = "../../crates/theme-core" }
 seek-widgets = { path = "../../widgets/seek-widgets" }
 lyrics-view = { path = "../../widgets/lyrics-view" }
 nucleo-matcher = "0.3.1"
+libc = "0.2"
 
 # .deb (cargo-deb) — shared-library deps are detected from the binary
 [package.metadata.deb]
