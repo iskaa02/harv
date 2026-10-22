@@ -1,0 +1,614 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "harv theme.toml",
+  "type": "object",
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "extends": {
+          "type": "string"
+        },
+        "scheme": {
+          "enum": [
+            "light",
+            "dark"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "colors": {
+      "type": "object",
+      "properties": {
+        "bg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "sidebar": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "raise": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "hover": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "fg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "dim": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "accent_on": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "play_bg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "play_fg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "bar_bg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "bar_fg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "toast_bg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "toast_fg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "np_fg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "np_on": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "line": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "selected": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "focus": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "scrim": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "danger": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "success": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "warn": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "accent": {
+          "type": "string",
+          "description": "\"cover\" or a colour"
+        },
+        "derive": {
+          "type": "boolean",
+          "description": "compute missing colours from bg/fg; generate colors_alt"
+        }
+      },
+      "additionalProperties": false
+    },
+    "colors_alt": {
+      "type": "object",
+      "properties": {
+        "bg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "sidebar": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "raise": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "hover": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "fg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "dim": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "accent_on": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "play_bg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "play_fg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "bar_bg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "bar_fg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "toast_bg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "toast_fg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "np_fg": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "np_on": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "line": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "selected": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "focus": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "scrim": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "danger": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "success": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "warn": {
+          "type": "string",
+          "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+        },
+        "accent": {
+          "type": "string",
+          "description": "\"cover\" or a colour"
+        }
+      },
+      "additionalProperties": false
+    },
+    "fonts": {
+      "type": "object",
+      "properties": {
+        "ui": {
+          "type": "string"
+        },
+        "mono": {
+          "type": "string"
+        },
+        "fallbacks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "shape": {
+      "type": "object",
+      "properties": {
+        "xs": {
+          "type": "number"
+        },
+        "sm": {
+          "type": "number"
+        },
+        "md": {
+          "type": "number"
+        },
+        "lg": {
+          "type": "number"
+        },
+        "input": {
+          "type": "number"
+        },
+        "xl": {
+          "type": "number"
+        },
+        "control": {
+          "type": "number"
+        },
+        "cover": {
+          "type": "number"
+        },
+        "hero": {
+          "type": "number"
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "sidebar_w": {
+          "type": "number"
+        },
+        "track_row_h": {
+          "type": "number"
+        },
+        "label_tracking": {
+          "type": "number"
+        },
+        "border_w": {
+          "type": "number"
+        }
+      }
+    },
+    "effects": {
+      "type": "object",
+      "properties": {
+        "ambient": {
+          "type": "number"
+        },
+        "bar_tint": {
+          "type": "number"
+        },
+        "shadow": {
+          "type": "number"
+        },
+        "motion": {
+          "type": "number"
+        }
+      }
+    },
+    "vars": {
+      "type": "object",
+      "description": "your own tokens, usable as {{name}} in style.css"
+    },
+    "variants": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "scheme": {
+            "enum": [
+              "light",
+              "dark"
+            ]
+          },
+          "colors": {
+            "type": "object",
+            "properties": {
+              "bg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "sidebar": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "raise": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "hover": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "fg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "dim": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "accent_on": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "play_bg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "play_fg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "bar_bg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "bar_fg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "toast_bg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "toast_fg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "np_fg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "np_on": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "line": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "selected": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "focus": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "scrim": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "danger": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "success": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "warn": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "accent": {
+                "type": "string",
+                "description": "\"cover\" or a colour"
+              },
+              "derive": {
+                "type": "boolean",
+                "description": "compute missing colours from bg/fg; generate colors_alt"
+              }
+            },
+            "additionalProperties": false
+          },
+          "colors_alt": {
+            "type": "object",
+            "properties": {
+              "bg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "sidebar": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "raise": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "hover": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "fg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "dim": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "accent_on": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "play_bg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "play_fg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "bar_bg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "bar_fg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "toast_bg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "toast_fg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "np_fg": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "np_on": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "line": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "selected": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "focus": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "scrim": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "danger": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "success": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "warn": {
+                "type": "string",
+                "description": "#rrggbb, #rrggbbaa, rgb() or oklch()"
+              },
+              "accent": {
+                "type": "string",
+                "description": "\"cover\" or a colour"
+              },
+              "derive": {
+                "type": "boolean",
+                "description": "compute missing colours from bg/fg; generate colors_alt"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "words": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "shell": {
+      "type": "object"
+    },
+    "page": {
+      "type": "object"
+    },
+    "lyrics": {
+      "type": "object",
+      "properties": {
+        "font": {
+          "type": "string"
+        },
+        "active_size": {
+          "type": "number"
+        },
+        "size": {
+          "type": "number"
+        },
+        "line_gap": {
+          "type": "number"
+        },
+        "align": {
+          "enum": [
+            "start",
+            "center"
+          ]
+        },
+        "blur": {
+          "type": "number"
+        },
+        "glow": {
+          "type": "number"
+        },
+        "spring": {
+          "type": "number"
+        },
+        "cascade": {
+          "type": "number"
+        },
+        "backdrop": {
+          "enum": [
+            "cover",
+            "gradient",
+            "solid",
+            "none"
+          ]
+        },
+        "layout": {
+          "enum": [
+            "split",
+            "centered",
+            "lyrics-only"
+          ]
+        },
+        "cover_radius": {
+          "type": "number"
+        },
+        "cover_shadow": {
+          "type": "boolean"
+        },
+        "chrome": {
+          "enum": [
+            "plain",
+            "capsule"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -138,9 +138,9 @@ on a background thread, and forward `Update`s to the main loop via the `async_ch
 
 Everything visual is themeable: `crates/theme-core` (tokens, layouts, loader) + `apps/harv/src/{theme.rs,sidebar.rs,window.rs,components/}`.
 Built-ins: blur (formerly classic; the original look — keep it pixel-identical: compare screenshots against a build before your change), harv (formerly mixer; the app-palette theme). Every theme has a `[colors]` palette for its native scheme plus a full `[colors_alt]` for the other; Preferences → Appearance → Style picks System / Light / Dark, store key `color_mode`, `HARV_MODE` env overrides; Orbit and Tape Deck were removed to cut surface; mockups still in `docs/mockups/`; there is no theme editor — the gallery in
-Preferences only switches themes and opens `~/.config/harv/themes`). Design, status and gotchas: `docs/THEMING_DESIGN.md`. Pages with no theme
+Preferences only switches themes and opens `~/.config/harv/themes`). Design, status and gotchas: `docs/THEMING_DESIGN.md`. User-facing reference (derive, variants, `[vars]`, templated theme CSS, `{{shadow:N}}`/`{{ms:N}}`, `--validate-theme`, `--install-theme`): `docs/THEME_REFERENCE.md`; example in `docs/examples/catppuccin/`. Pages with no theme
 layout use the built-in composition. CSS: `style.css` + `components/*.css` are a template (`{{token}}`, `@colors`); a theme's own
-`style.css` is raw. libadwaita applies one breakpoint at a time. `--theme`, `--watch`, `--switch-to` for dev. The full-screen lyrics page is styled by an optional `[lyrics]` table (keys in `docs/THEMING_DESIGN.md`, "Full-screen lyrics page ([lyrics])"). Its text, progress bar and controls use the `np_fg` token (`np_on` on the play button), so a theme that changes `backdrop` must pick both to contrast with it, in `[colors]` and `[colors_alt]`.
+`style.css` is templated too (comments stripped first). libadwaita applies one breakpoint at a time. `--theme`, `--watch`, `--switch-to` for dev. The full-screen lyrics page is styled by an optional `[lyrics]` table (keys in `docs/THEMING_DESIGN.md`, "Full-screen lyrics page ([lyrics])"). Its text, progress bar and controls use the `np_fg` token (`np_on` on the play button), so a theme that changes `backdrop` must pick both to contrast with it, in `[colors]` and `[colors_alt]`.
 
 ## Data and licensing
 

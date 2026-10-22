@@ -5,6 +5,7 @@ use crate::ctx::Ctx;
 use adw::prelude::*;
 use gtk::{gdk, gio};
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use theme_core::{Loader, Theme};
@@ -54,6 +55,8 @@ pub struct Skin {
     mode: Cell<Mode>,
     /// Preferences → Layout → Density: 0 compact, 1 comfortable (the theme's own row height), 2 spacious.
     density: Cell<u32>,
+    /// Chosen palette variant per theme spec (`[variants.*]`); absent = the theme's own palette.
+    variants: RefCell<HashMap<String, String>>,
 }
 
 thread_local! { static SKIN: RefCell<Option<Rc<Skin>>> = const { RefCell::new(None) }; }
@@ -69,12 +72,26 @@ impl Skin {
         gtk::style_context_add_provider_for_display(&gdk::Display::default().unwrap(), &provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
         let mut dirs = vec![theme_core::user_theme_dir()];
         if watch { dirs.insert(0, PathBuf::from(DEV_THEMES)); }
-        let skin = Rc::new(Skin { provider, loader: Loader::new(dirs), watch, spec: RefCell::new(theme_core::DEFAULT.into()), mode: Cell::new(Mode::Dark), density: Cell::new(1) });
+        let skin = Rc::new(Skin { provider, loader: Loader::new(dirs), watch, spec: RefCell::new(theme_core::DEFAULT.into()), mode: Cell::new(Mode::Dark), density: Cell::new(1), variants: RefCell::new(HashMap::new()) });
         SKIN.with(|s| *s.borrow_mut() = Some(skin.clone()));
         skin
     }
 
     pub fn mode(&self) -> Mode { self.mode.get() }
+
+    /// Startup: the saved variant choices (theme id → variant id).
+    pub fn set_variants(&self, v: HashMap<String, String>) { *self.variants.borrow_mut() = v; }
+
+    pub fn variants(&self) -> HashMap<String, String> { self.variants.borrow().clone() }
+
+    /// The variant chosen for theme `spec`, if any.
+    pub fn variant_of(&self, spec: &str) -> Option<String> { self.variants.borrow().get(spec).cloned() }
+
+    /// Remember (or clear) the variant of `spec`; applies on the next load / [`Skin::switch`].
+    pub fn set_variant(&self, spec: &str, variant: Option<&str>) {
+        let mut m = self.variants.borrow_mut();
+        match variant { Some(v) => { m.insert(spec.into(), v.into()); } None => { m.remove(spec); } }
+    }
 
     pub fn density(&self) -> u32 { self.density.get() }
 
@@ -94,7 +111,8 @@ impl Skin {
     /// Load a theme in the current scheme.
     fn load_resolved(&self, spec: &str) -> Result<Theme, String> {
         let light = self.sync_scheme();
-        self.loader.load(spec).map(|t| {
+        let variant = self.variant_of(spec);
+        self.loader.load_with(spec, variant.as_deref()).map(|t| {
             let mut t = t.resolved(light);
             // Density scales the theme's own row height; the middle setting leaves the theme untouched.
             t.metrics.track_row_h = match self.density.get() { 0 => (t.metrics.track_row_h * 4 + 2) / 5, 2 => t.metrics.track_row_h * 5 / 4, _ => t.metrics.track_row_h };

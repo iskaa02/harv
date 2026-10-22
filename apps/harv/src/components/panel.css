@@ -2,7 +2,7 @@
 
 .panel-label { font-family: {{font_mono}}; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; color: @fg_dim; }
 .queue-items { background: transparent; }
-.queue-items > row { background: transparent; padding: 0; border-bottom: 1px solid alpha(@fg, 0.08); }
+.queue-items > row { background: transparent; padding: 0; border-bottom: {{border_w}}px solid alpha(@fg, 0.08); }
 .queue-row { padding: 9px 0; }
 .queue-empty { color: @fg_dim; font-size: 13px; padding: 10px 0; }
 

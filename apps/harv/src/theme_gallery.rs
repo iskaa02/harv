@@ -81,6 +81,38 @@ pub fn fill(holder: &gtk::Box, ctx: &Rc<Ctx>, dialog: &adw::Dialog) {
     row.append(&folder);
     row.append(&rescan);
     holder.append(&row);
+    for (label, zip) in [("Install from folder…", false), ("Install from .zip…", true)] {
+        let b = gtk::Button::builder().label(label).tooltip_text("Copy a theme into your themes folder (it is validated first)").halign(gtk::Align::Start).margin_top(6).css_classes(["flat"]).build();
+        let (h, c, d) = (holder.clone(), ctx.clone(), dialog.clone());
+        b.connect_clicked(move |_| install_dialog(&h, &c, &d, zip));
+        row.append(&b);
+    }
+}
+
+fn install_dialog(holder: &gtk::Box, ctx: &Rc<Ctx>, dialog: &adw::Dialog, zip: bool) {
+    let fd = gtk::FileDialog::builder().title(if zip { "Install a theme from a .zip" } else { "Install a theme from a folder" }).build();
+    if zip {
+        let f = gtk::FileFilter::new();
+        f.set_name(Some("Theme archives (.zip)"));
+        f.add_pattern("*.zip");
+        let filters = gio::ListStore::new::<gtk::FileFilter>();
+        filters.append(&f);
+        fd.set_filters(Some(&filters));
+    }
+    let win = dialog.root().and_downcast::<gtk::Window>();
+    let (h, c, d) = (holder.clone(), ctx.clone(), dialog.clone());
+    let done = move |res: Result<gio::File, glib::Error>| {
+        let Ok(file) = res else { return };
+        let Some(path) = file.path() else { return };
+        match theme_core::install(&path, &theme_core::user_theme_dir()) {
+            Ok((id, warn)) => {
+                c.toast(&if warn.is_empty() { format!("Installed theme `{id}`") } else { format!("Installed `{id}` — {}", warn.join("; ")) });
+                refresh_later(&h, &c, &d);
+            }
+            Err(e) => c.toast(&format!("Install failed: {e}")),
+        }
+    };
+    if zip { fd.open(win.as_ref(), gio::Cancellable::NONE, done); } else { fd.select_folder(win.as_ref(), gio::Cancellable::NONE, done); }
 }
 
 /// Rebuild the gallery after the current idle work (a card can't be destroyed inside its own click handler).
@@ -103,6 +135,7 @@ fn card(ctx: &Rc<Ctx>, holder: &gtk::Box, dialog: &adw::Dialog, e: &Entry, t: Rc
     caption.append(&title);
     if current { caption.append(&gtk::Image::from_icon_name("object-select-symbolic")); }
     card.append(&caption);
+    if !e.variants.is_empty() { card.append(&variant_picker(ctx, holder, dialog, e)); }
 
     // Facts: scheme · lyrics page · origin, plus a warning when the UI font is missing.
     let installed_font = fonts.contains(&t.fonts.ui.to_lowercase());
@@ -116,6 +149,27 @@ fn card(ctx: &Rc<Ctx>, holder: &gtk::Box, dialog: &adw::Dialog, e: &Entry, t: Rc
     card.add_controller(click);
     card.set_cursor_from_name(Some("pointer"));
     card
+}
+
+/// Palette variants of a theme (`[variants.*]`): "Default" plus one entry each; picking one switches to the theme with it.
+fn variant_picker(ctx: &Rc<Ctx>, holder: &gtk::Box, dialog: &adw::Dialog, e: &Entry) -> gtk::DropDown {
+    let mut names: Vec<&str> = vec!["Default palette"];
+    names.extend(e.variants.iter().map(|(_, n)| n.as_str()));
+    let dd = gtk::DropDown::from_strings(&names);
+    dd.add_css_class("flat");
+    dd.set_tooltip_text(Some("Palette"));
+    let chosen = theme::skin().and_then(|s| s.variant_of(&e.id));
+    dd.set_selected(chosen.and_then(|v| e.variants.iter().position(|(id, _)| *id == v)).map_or(0, |i| i as u32 + 1));
+    let (c, h, d, e) = (ctx.clone(), holder.clone(), dialog.clone(), e.clone());
+    dd.connect_selected_notify(move |dd| {
+        let Some(skin) = theme::skin() else { return };
+        let pick = (dd.selected() as usize).checked_sub(1).and_then(|i| e.variants.get(i)).map(|(id, _)| id.clone());
+        if skin.variant_of(&e.id) == pick { return; }
+        skin.set_variant(&e.id, pick.as_deref());
+        let _ = c.store.set("theme_variants", &skin.variants());
+        activate(&c, &h, &d, &e.id);
+    });
+    dd
 }
 
 fn activate(ctx: &Rc<Ctx>, holder: &gtk::Box, dialog: &adw::Dialog, id: &str) {

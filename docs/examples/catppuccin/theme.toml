@@ -1,0 +1,43 @@
+# Example: a whole theme in ~30 lines. `derive = true` computes every colour not listed from bg / fg / accent,
+# and generates the opposite-scheme palette. Variants swap in other palettes (Preferences → Theme → palette menu).
+[meta]
+name = "Catppuccin"
+extends = "blur"
+scheme = "dark"
+
+[colors]
+derive = true
+bg = "#1e1e2e"       # Mocha base
+fg = "#cdd6f4"
+accent = "#cba6f7"
+sidebar = "#181825"  # explicit values always win over derived ones
+
+[variants.macchiato]
+name = "Macchiato"
+[variants.macchiato.colors]
+bg = "#24273a"
+fg = "#cad3f5"
+accent = "#c6a0f6"
+sidebar = "#1e2030"
+
+[variants.latte]
+name = "Latte"
+[variants.latte.colors]
+bg = "#eff1f5"
+fg = "#4c4f69"
+accent = "#8839ef"
+
+[shape]
+md = 8
+lg = 10
+xl = 14
+
+[metrics]
+border_w = 1
+
+[effects]
+shadow = 0.6        # softer drop shadows
+motion = 0.8        # slightly snappier transitions
+
+[vars]               # your own tokens, usable as {{glow}} in style.css
+glow = 0.35

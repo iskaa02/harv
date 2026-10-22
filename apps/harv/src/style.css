@@ -15,19 +15,19 @@ navigation-view { background-image: radial-gradient(ellipse 900px 420px at 30% 0
 
 /* window buttons: translucent so they sit well over artwork too */
 windowcontrols button { background: none; box-shadow: none; min-width: 26px; min-height: 26px; padding: 0; }
-windowcontrols button image { border-radius: 999px; background: alpha(@fg, 0.08); color: alpha(@fg, 0.9); -gtk-icon-size: 16px; padding: 5px; transition: background 150ms ease; }
+windowcontrols button image { border-radius: 999px; background: alpha(@fg, 0.08); color: alpha(@fg, 0.9); -gtk-icon-size: 16px; padding: 5px; transition: background {{ms:150}} ease; }
 windowcontrols button:hover image { background: alpha(@fg, 0.18); }
 
 /* ── sidebar */
 .sidebar { background: alpha(@bg_side, 0.92); padding: 18px 12px 12px 12px; border-right: 1px solid alpha(@fg, 0.06); }
 .app-name { font-size: 21px; font-weight: 800; letter-spacing: -0.6px; padding: 4px 12px 18px 12px; }
 .nav-list { background: transparent; }
-.nav-row { border-radius: {{r_md}}px; padding: 9px 12px; margin: 2px 0; color: alpha(@fg, 0.72); font-weight: 600; font-size: 14px; transition: background 150ms ease, color 150ms ease; }
+.nav-row { border-radius: {{r_md}}px; padding: 9px 12px; margin: 2px 0; color: alpha(@fg, 0.72); font-weight: 600; font-size: 14px; transition: background {{ms:150}} ease, color {{ms:150}} ease; }
 .nav-row:hover { background: alpha(@fg, 0.06); color: @fg; }
 .nav-row:selected { background: linear-gradient(90deg, alpha(@lib_accent, 0.28), alpha(@lib_accent, 0.12)); color: @fg; }
 .nav-row:selected image { color: @lib_accent; }
 .nav-section { font-family: {{font_mono}}; font-size: 10.5px; font-weight: 700; letter-spacing: {{label_tracking}}px; color: alpha(@fg, 0.36); padding: 24px 12px 8px 12px; }
-.nav-prefs { border-radius: {{r_md}}px; padding: 9px 12px; color: alpha(@fg, 0.7); font-weight: 600; transition: background 150ms ease; }
+.nav-prefs { border-radius: {{r_md}}px; padding: 9px 12px; color: alpha(@fg, 0.7); font-weight: 600; transition: background {{ms:150}} ease; }
 .nav-prefs:hover { background: alpha(@fg, 0.06); }
 
 /* ── page chrome */
@@ -37,9 +37,9 @@ windowcontrols button:hover image { background: alpha(@fg, 0.18); }
 .detail-head { padding: 12px 0 8px 0; }
 .hero-title { font-size: 38px; font-weight: 800; letter-spacing: -0.9px; }
 .hero-kind { font-family: {{font_mono}}; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: alpha(@fg, 0.55); }
-.hero-art { box-shadow: 0 24px 60px alpha(#000, 0.6), 0 6px 16px alpha(#000, 0.4); border-radius: {{r_hero}}px; }
+.hero-art { box-shadow: 0 24px 60px alpha(#000, {{shadow:0.6}}), 0 6px 16px alpha(#000, {{shadow:0.4}}); border-radius: {{r_hero}}px; }
 .see-all, .shelf-arrow { color: alpha(@fg, 0.6); }
-.shelf-arrow { background: alpha(@fg, 0.08); min-width: 28px; min-height: 28px; padding: 0; transition: background 150ms ease, color 150ms ease; }
+.shelf-arrow { background: alpha(@fg, 0.08); min-width: 28px; min-height: 28px; padding: 0; transition: background {{ms:150}} ease, color {{ms:150}} ease; }
 .shelf-arrow:hover { background: alpha(@fg, 0.18); color: @fg; }
 .shelf-arrow:disabled { opacity: 0.3; }
 
@@ -51,39 +51,39 @@ windowcontrols button:hover image { background: alpha(@fg, 0.18); }
 .state-expander { font-size: 12px; color: alpha(@fg, 0.45); }
 .state-detail { font-family: monospace; font-size: 11.5px; color: alpha(@fg, 0.5); margin-top: 6px; }
 @keyframes pulse { from { opacity: 0.35; } to { opacity: 0.8; } }
-.skeleton { background: alpha(@fg, 0.08); border-radius: {{r_sm}}px; animation: pulse 900ms ease-in-out infinite alternate; }
+.skeleton { background: alpha(@fg, 0.08); border-radius: {{r_sm}}px; animation: pulse {{ms:900}} ease-in-out infinite alternate; }
 .skeleton.line { border-radius: 4px; }
 
 /* ── cover art */
 .art { border-radius: {{r_cover}}px; background: alpha(@fg, 0.07); }
 .art.round { border-radius: 999px; }
-.hero-art.round { box-shadow: 0 14px 36px alpha(#000, 0.5); }
+.hero-art.round { box-shadow: 0 14px 36px alpha(#000, {{shadow:0.5}}); }
 
 /* ── cards / shelves */
 .shelf { min-height: 0; }
-.card-btn { padding: 10px; border-radius: {{r_xl}}px; transition: background 200ms ease; }
+.card-btn { padding: 10px; border-radius: {{r_xl}}px; transition: background {{ms:200}} ease; }
 .card-btn:hover { background: alpha(@fg, 0.08); box-shadow: inset 0 0 0 1px alpha(@fg, 0.05); }
 .card-btn:active { transform: scale(0.98); }
-.card-btn .art { box-shadow: 0 8px 22px alpha(#000, 0.45), 0 1px 3px alpha(#000, 0.4); transition: transform 220ms ease, box-shadow 220ms ease; }
-.card-btn:hover .art { transform: scale(1.03); box-shadow: 0 14px 30px alpha(#000, 0.55), 0 2px 6px alpha(#000, 0.4); }
+.card-btn .art { box-shadow: 0 8px 22px alpha(#000, {{shadow:0.45}}), 0 1px 3px alpha(#000, {{shadow:0.4}}); transition: transform {{ms:220}} ease, box-shadow {{ms:220}} ease; }
+.card-btn:hover .art { transform: scale(1.03); box-shadow: 0 14px 30px alpha(#000, {{shadow:0.55}}), 0 2px 6px alpha(#000, {{shadow:0.4}}); }
 .card-title { font-size: 13.5px; font-weight: 650; color: @fg; }
 .card-sub { font-size: 12px; font-weight: 500; color: alpha(@fg, 0.5); }
-.card-play { border-radius: 999px; background: @lib_accent; color: @accent_on; min-width: 40px; min-height: 40px; margin: 12px; padding: 0; box-shadow: 0 6px 16px alpha(#000, 0.55); opacity: 0; transition: opacity 160ms ease, transform 160ms ease; transform: translateY(6px); }
+.card-play { border-radius: 999px; background: @lib_accent; color: @accent_on; min-width: 40px; min-height: 40px; margin: 12px; padding: 0; box-shadow: 0 6px 16px alpha(#000, {{shadow:0.55}}); opacity: 0; transition: opacity {{ms:160}} ease, transform {{ms:160}} ease; transform: translateY(6px); }
 .card-btn:hover .card-play { opacity: 1; transform: translateY(0); }
 
 /* ── motion (press feedback, shelf entrance) */
 button.pill:active, button.suggested-action:active, .chip:active { transform: scale(0.97); }
 @keyframes card-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-.shelf .card-btn { animation: card-in 280ms cubic-bezier(0.23, 1, 0.32, 1) backwards; }
-.shelf .card-btn:nth-child(2) { animation-delay: 40ms; }
-.shelf .card-btn:nth-child(3) { animation-delay: 80ms; }
-.shelf .card-btn:nth-child(4) { animation-delay: 120ms; }
-.shelf .card-btn:nth-child(5) { animation-delay: 160ms; }
-.shelf .card-btn:nth-child(n+6) { animation-delay: 200ms; }
+.shelf .card-btn { animation: card-in {{ms:280}} cubic-bezier(0.23, 1, 0.32, 1) backwards; }
+.shelf .card-btn:nth-child(2) { animation-delay: {{ms:40}}; }
+.shelf .card-btn:nth-child(3) { animation-delay: {{ms:80}}; }
+.shelf .card-btn:nth-child(4) { animation-delay: {{ms:120}}; }
+.shelf .card-btn:nth-child(5) { animation-delay: {{ms:160}}; }
+.shelf .card-btn:nth-child(n+6) { animation-delay: {{ms:200}}; }
 
 /* ── track lists */
 .track-list { background: transparent; }
-.track-row { min-height: {{track_row_h}}px; border-radius: {{r_lg}}px; background: transparent; padding: 2px 4px; transition: background 120ms ease; }
+.track-row { min-height: {{track_row_h}}px; border-radius: {{r_lg}}px; background: transparent; padding: 2px 4px; transition: background {{ms:120}} ease; }
 .track-row:hover { background: alpha(@fg, 0.08); }
 .track-row:active { background: alpha(@fg, 0.11); }
 .track-row:focus-visible { outline: 2px solid alpha(@lib_accent, 0.6); outline-offset: -2px; }
@@ -92,7 +92,7 @@ button.pill:active, button.suggested-action:active, .chip:active { transform: sc
 .song-title.playing { color: @lib_accent; }
 .song-artist { font-size: 12.5px; font-weight: 500; color: alpha(@fg, 0.58); }
 .song-time { font-family: {{font_mono}}; font-size: 12.5px; font-weight: 500; color: alpha(@fg, 0.5); font-feature-settings: "tnum"; }
-.row-btn { min-width: 32px; min-height: 32px; color: alpha(@fg, 0.4); transition: color 150ms ease; }
+.row-btn { min-width: 32px; min-height: 32px; color: alpha(@fg, 0.4); transition: color {{ms:150}} ease; }
 .row-btn:hover { color: @fg; }
 .heart.liked { color: @lib_accent; }
 .list-head { padding: 0 6px; min-height: 34px; }
@@ -104,39 +104,39 @@ button.pill:not(.suggested-action):hover { background: alpha(@fg, 0.16); }
 
 /* ── search */
 searchentry.lib-search {
-  min-height: 44px; border-radius: {{r_input}}px; padding: 0 10px; background: alpha(@fg, 0.08); color: @fg; border: none; box-shadow: none; outline: none; transition: background 150ms ease, box-shadow 150ms ease;
+  min-height: 44px; border-radius: {{r_input}}px; padding: 0 10px; background: alpha(@fg, 0.08); color: @fg; border: none; box-shadow: none; outline: none; transition: background {{ms:150}} ease, box-shadow {{ms:150}} ease;
 }
 searchentry.lib-search:focus-within { background: alpha(@fg, 0.12); box-shadow: inset 0 0 0 1.5px alpha(@lib_accent, 0.7); }
 searchentry.lib-search image { color: alpha(@fg, 0.5); }
 .chips { margin: 2px 0; }
-.chip { border-radius: {{r_control}}px; padding: 5px 16px; background: alpha(@fg, 0.07); box-shadow: inset 0 0 0 1px alpha(@fg, 0.06); font-weight: 600; font-size: 13px; transition: background 150ms ease, box-shadow 150ms ease; }
+.chip { border-radius: {{r_control}}px; padding: 5px 16px; background: alpha(@fg, 0.07); box-shadow: inset 0 0 0 1px alpha(@fg, 0.06); font-weight: 600; font-size: 13px; transition: background {{ms:150}} ease, box-shadow {{ms:150}} ease; }
 .chip:hover { background: alpha(@fg, 0.13); box-shadow: inset 0 0 0 1px alpha(@fg, 0.12); }
 .chip:checked { background: @lib_accent; color: @accent_on; box-shadow: 0 4px 14px alpha(@lib_accent, 0.4); }
-.suggest-list { background: @bg_raise; border-radius: {{r_lg}}px; box-shadow: 0 8px 24px alpha(#000, 0.4); }
+.suggest-list { background: @bg_raise; border-radius: {{r_lg}}px; box-shadow: 0 8px 24px alpha(#000, {{shadow:0.4}}); }
 .suggest-list row { padding: 0; }
 .suggest-list row:hover { background: alpha(@fg, 0.07); }
 .history-item { border-radius: {{r_sm}}px; padding: 6px 10px; color: alpha(@fg, 0.8); }
 
 /* ── mini bar: translucent, tinted by the cover */
-.mini-bar { background-color: @bar_bg; color: @bar_fg; background-image: linear-gradient(90deg, alpha(@lib_accent, {{bar_tint1}}), alpha(@lib_accent, {{bar_tint2}}) 55%); border-top: 1px solid alpha(@bar_fg, 0.08); box-shadow: 0 -10px 30px alpha(#000, 0.35); }
+.mini-bar { background-color: @bar_bg; color: @bar_fg; background-image: linear-gradient(90deg, alpha(@lib_accent, {{bar_tint1}}), alpha(@lib_accent, {{bar_tint2}}) 55%); border-top: {{border_w}}px solid alpha(@bar_fg, 0.08); box-shadow: 0 -10px 30px alpha(#000, {{shadow:0.35}}); }
 .mini-bar button.flat { color: @bar_fg; }
 .mini-bar .song-title { color: @bar_fg; }
 .mini-bar .song-artist { color: alpha(@bar_fg, 0.58); }
-.mini-bar .art { box-shadow: 0 4px 12px alpha(#000, 0.5); border-radius: {{r_sm}}px; }
+.mini-bar .art { box-shadow: 0 4px 12px alpha(#000, {{shadow:0.5}}); border-radius: {{r_sm}}px; }
 scale.mini-seek { min-height: 12px; margin: 0; padding: 0; }
-scale.mini-seek trough { min-height: 3px; background: alpha(@bar_fg, 0.14); border-radius: 0; transition: min-height 120ms ease; }
+scale.mini-seek trough { min-height: 3px; background: alpha(@bar_fg, 0.14); border-radius: 0; transition: min-height {{ms:120}} ease; }
 scale.mini-seek:hover trough { min-height: 5px; }
 scale.mini-seek highlight { background: @lib_accent; border-radius: 0; }
 scale.mini-seek slider { min-width: 0; min-height: 0; background: transparent; border: none; box-shadow: none; margin: 0; padding: 0; }
-scale.mini-seek:hover slider { min-width: 12px; min-height: 12px; background: @bar_fg; border-radius: 999px; margin: -4px; box-shadow: 0 1px 4px alpha(#000, 0.5); }
+scale.mini-seek:hover slider { min-width: 12px; min-height: 12px; background: @bar_fg; border-radius: 999px; margin: -4px; box-shadow: 0 1px 4px alpha(#000, {{shadow:0.5}}); }
 .mini-time { font-family: {{font_mono}}; font-size: 12px; color: alpha(@bar_fg, 0.55); font-feature-settings: "tnum"; margin-right: 8px; }
-.play-btn { background: @play_bg; color: @play_fg; box-shadow: 0 4px 14px alpha(#000, 0.4); min-width: 40px; min-height: 40px; transition: transform 120ms ease, background 150ms ease; }
+.play-btn { background: @play_bg; color: @play_fg; box-shadow: 0 4px 14px alpha(#000, {{shadow:0.4}}); min-width: 40px; min-height: 40px; transition: transform {{ms:120}} ease, background {{ms:150}} ease; }
 .play-btn:hover { background: alpha(@play_bg, 0.88); }
 .play-btn:active { transform: scale(0.94); }
 .play-btn.big { min-width: 56px; min-height: 56px; }
 
 /* ── now playing */
-.np-controls button { color: alpha(@np_fg, 0.85); transition: color 150ms ease, transform 120ms ease; }
+.np-controls button { color: alpha(@np_fg, 0.85); transition: color {{ms:150}} ease, transform {{ms:120}} ease; }
 .np-controls button:active { transform: scale(0.92); }
 .np-controls button.on { color: @lib_accent; }
 .np-controls .heart.liked { color: @lib_accent; }
@@ -151,7 +151,7 @@ scale.mini-seek:hover slider { min-width: 12px; min-height: 12px; background: @b
 .lyrics-note { font-size: 20px; font-weight: 600; color: alpha(@np_fg, 0.5); }
 button.on { color: @lib_accent; }
 
-button.suggested-action { background: @lib_accent; color: @accent_on; transition: background 150ms ease; }
+button.suggested-action { background: @lib_accent; color: @accent_on; transition: background {{ms:150}} ease; }
 button.suggested-action:hover { background: alpha(@lib_accent, 0.85); }
 
 /* sleep timer: the menu button tints like other active toggles */
@@ -163,7 +163,7 @@ preferencespage preferencesgroup > box > box > list, list.boxed-list, .boxed-lis
 list.boxed-list > row { background: transparent; }
 list.boxed-list > row:hover { background: alpha(@fg, 0.04); }
 popover.menu contents, popover > contents { border-radius: {{r_input}}px; }
-toast { background: alpha(@toast_bg, 0.96); border-radius: {{r_control}}px; box-shadow: 0 6px 20px alpha(#000, 0.45); color: @toast_fg; }
+toast { background: alpha(@toast_bg, 0.96); border-radius: {{r_control}}px; box-shadow: 0 6px 20px alpha(#000, {{shadow:0.45}}); color: @toast_fg; }
 switch:checked { background: @lib_accent; }
 switch:checked slider { background: @accent_on; }
 scrollbar slider { border-radius: 999px; }
@@ -172,8 +172,8 @@ scrollbar slider { border-radius: 999px; }
 .track-row.drop-over { box-shadow: inset 0 2px 0 @lib_accent; }
 
 /* Full-screen view open / close animation: the transport row fades in after the artwork (see window.rs `open_full`). */
-.np-chrome { transition: opacity 360ms ease-out 300ms, transform 360ms ease-out 300ms; }
-.np-chrome.np-hidden { opacity: 0; transform: translateY(14px); transition: opacity 180ms ease-in, transform 180ms ease-in; }
+.np-chrome { transition: opacity {{ms:360}} ease-out {{ms:300}}, transform {{ms:360}} ease-out {{ms:300}}; }
+.np-chrome.np-hidden { opacity: 0; transform: translateY(14px); transition: opacity {{ms:180}} ease-in, transform {{ms:180}} ease-in; }
 
 /* Full-screen lyrics page: the page colour shows through when the theme asks for no backdrop; `chrome = "capsule"` puts the controls on a translucent pill. */
 .np-page { background-color: @bg; }

@@ -6,19 +6,19 @@
 .nowp-counter { font-family: {{font_mono}}; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; color: @fg_dim; }
 .nowp-lyrics-note { color: @fg_dim; font-size: 13px; }
 .nowp-art { background-color: alpha(@fg, 0.06); }
-.nowp-shadow { box-shadow: 0 20px 50px alpha(black, 0.35); }
+.nowp-shadow { box-shadow: 0 20px 50px alpha(black, {{shadow:0.35}}); }
 
 .nowp-tabs { margin-bottom: 4px; }
 .nowp-tabs .nowp-tab, .nowp-tabs .nowp-tab:hover, .nowp-tabs .nowp-tab:checked, .nowp-tabs .nowp-tab:active { background: none; background-image: none; box-shadow: none; outline: none; }
 .nowp-tab { background: none; box-shadow: none; border: none; border-bottom: 2px solid transparent; border-radius: 0; min-height: 0; padding: 0 0 6px 0; font-weight: 600; color: @fg_dim; }
 .nowp-tab:checked { color: @fg; border-bottom-color: @lib_accent; }
 
-.nowp-next { background: alpha(@fg, 0.05); border: 1px solid alpha(@fg, 0.10); border-radius: {{r_md}}px; padding: 12px 14px; }
+.nowp-next { background: alpha(@fg, 0.05); border: {{border_w}}px solid alpha(@fg, 0.10); border-radius: {{r_md}}px; padding: 12px 14px; }
 .nowp-next-label { font-family: {{font_mono}}; font-size: 11px; color: @fg_dim; }
 .nowp-next-title { font-size: 15px; font-weight: 600; color: @fg; }
 .nowp-next-open { color: @fg_dim; font-size: 13px; }
 
-.nowp-credits { border-top: 1px solid alpha(@fg, 0.12); padding-top: 16px; }
+.nowp-credits { border-top: {{border_w}}px solid alpha(@fg, 0.12); padding-top: 16px; }
 .nowp-credit-key { color: @fg_dim; font-size: 14px; }
 .nowp-credit-val { color: @fg; font-size: 14px; font-weight: 600; }
 .nowp-section { font-family: {{font_mono}}; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: @fg_dim; }

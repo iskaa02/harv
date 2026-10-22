@@ -124,6 +124,12 @@ fn main() -> glib::ExitCode {
         // SAFETY: first thing in main, before any threads exist.
         unsafe { std::env::set_var("GSK_RENDERER", "gl") };
     }
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    match args.first().map(String::as_str) {
+        Some("--validate-theme") => return validate_themes(&args[1..]),
+        Some("--install-theme") => return install_theme(&args[1..]),
+        _ => {}
+    }
     let opts = parse_args();
     let rt = tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().thread_name("harv-io").build().expect("tokio runtime");
     let handle = rt.handle().clone();
@@ -134,6 +140,41 @@ fn main() -> glib::ExitCode {
     let code = app.run_with_args::<&str>(&[]);
     drop(rt);
     code
+}
+
+/// `harv --validate-theme <id|folder>…`: load each theme (and every variant, in both schemes), print problems and readability warnings.
+fn validate_themes(specs: &[String]) -> glib::ExitCode {
+    if specs.is_empty() { eprintln!("usage: harv --validate-theme <theme id | theme folder | theme.toml>…"); return glib::ExitCode::from(2); }
+    let loader = theme_core::Loader::new(vec![theme_core::user_theme_dir()]);
+    let mut failed = false;
+    for spec in specs {
+        let base = match loader.load(spec) { Ok(t) => t, Err(e) => { println!("✗ {spec}: {e}"); failed = true; continue; } };
+        let mut runs: Vec<Option<String>> = vec![None];
+        runs.extend(base.variants.keys().cloned().map(Some));
+        for v in runs {
+            let label = v.as_deref().map_or(spec.clone(), |v| format!("{spec} [{v}]"));
+            match loader.load_with(spec, v.as_deref()) {
+                Ok(t) => {
+                    let light = t.light();
+                    let mut notes = t.clone().lint();
+                    // The other scheme as well: that is what a user in the opposite mode sees.
+                    notes.extend(t.resolved(!light).lint().into_iter().map(|n| format!("(other scheme) {n}")));
+                    if notes.is_empty() { println!("✓ {label}"); } else { println!("✓ {label} — {} warning(s)", notes.len()); for n in notes { println!("    ! {n}"); } }
+                }
+                Err(e) => { println!("✗ {label}: {e}"); failed = true; }
+            }
+        }
+    }
+    if failed { glib::ExitCode::FAILURE } else { glib::ExitCode::SUCCESS }
+}
+
+/// `harv --install-theme <folder|theme.toml|.zip>`: same as Preferences → Theme → Install.
+fn install_theme(args: &[String]) -> glib::ExitCode {
+    let Some(src) = args.first() else { eprintln!("usage: harv --install-theme <folder | theme.toml | .zip>"); return glib::ExitCode::from(2) };
+    match theme_core::install(std::path::Path::new(src), &theme_core::user_theme_dir()) {
+        Ok((id, warn)) => { println!("installed `{id}` into {}", theme_core::user_theme_dir().display()); for w in warn { println!("    ! {w}"); } glib::ExitCode::SUCCESS }
+        Err(e) => { eprintln!("install failed: {e}"); glib::ExitCode::FAILURE }
+    }
 }
 
 fn build(app: &adw::Application, opts: &Opts, rt: &tokio::runtime::Handle) -> anyhow::Result<()> {
@@ -152,6 +193,7 @@ fn build(app: &adw::Application, opts: &Opts, rt: &tokio::runtime::Handle) -> an
     skin.set_initial_mode(theme::Mode::parse(&std::env::var("HARV_MODE").ok().or_else(|| store.get::<String>("color_mode")).unwrap_or_default()));
     let spec = opts.theme.clone().or_else(|| std::env::var("HARV_THEME").ok()).or_else(|| store.get::<String>("theme")).unwrap_or_else(|| theme_core::DEFAULT.into());
     skin.set_density(store.get::<u32>("ui_density").unwrap_or(1));
+    skin.set_variants(store.get::<std::collections::HashMap<String, String>>("theme_variants").unwrap_or_default());
     let active = skin.load_or_default(&spec);
     skin.apply_initial(&active);
     let ytm = Arc::new(rt.block_on(Ytm::new())?);

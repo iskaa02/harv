@@ -1,0 +1,4 @@
+/* Theme CSS is templated: {{tokens}} and your [vars] work here, and so do @colors. */
+.chip:checked { box-shadow: 0 0 18px alpha(@lib_accent, {{glow}}); }
+.nav-row:hover { box-shadow: inset 0 0 0 {{border_w}}px @line; }
+.suggest-list { border: {{border_w}}px solid @line; }
