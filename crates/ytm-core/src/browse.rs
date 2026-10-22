@@ -38,34 +38,34 @@ fn album_ref(a: &p::AlbumResult) -> AlbumRef {
 impl Ytm {
     pub async fn suggest(&self, q: &str) -> Result<Vec<String>> {
         let api = self.api().await?;
-        Ok(api.get_search_suggestions(q).await?.into_iter().map(|s| s.runs.into_iter().map(|r| r.take_text()).collect()).collect())
+        Ok(net(api.get_search_suggestions(q)).await?.into_iter().map(|s| s.runs.into_iter().map(|r| r.take_text()).collect()).collect())
     }
 
     pub async fn search(&self, q: &str, kind: SearchKind) -> Result<SearchResults> {
         let api = self.api().await?;
         let mut out = SearchResults::default();
         match kind {
-            SearchKind::Songs => out.songs = api.search_songs(q).await?.into_iter().map(|s| Track {
+            SearchKind::Songs => out.songs = net(api.search_songs(q)).await?.into_iter().map(|s| Track {
                 video_id: s.video_id.get_raw().to_string(), title: s.title, artists: split_artists(&s.artist), album: s.album.map(|a| a.name),
                 duration_s: parse_duration(&s.duration), thumb: best(&s.thumbnails),
             }).collect(),
-            SearchKind::Videos => out.videos = api.search_videos(q).await?.into_iter().filter_map(|v| match v {
+            SearchKind::Videos => out.videos = net(api.search_videos(q)).await?.into_iter().filter_map(|v| match v {
                 p::SearchResultVideo::Video { title, channel_name, video_id, length, thumbnails, .. } => Some(Track {
                     video_id: video_id.get_raw().to_string(), title, artists: vec![channel_name], album: None, duration_s: parse_duration(&length), thumb: best(&thumbnails),
                 }),
                 _ => None,
             }).collect(),
-            SearchKind::Albums => out.albums = api.search_albums(q).await?.into_iter().map(|a| AlbumRef {
+            SearchKind::Albums => out.albums = net(api.search_albums(q)).await?.into_iter().map(|a| AlbumRef {
                 browse_id: a.album_id.get_raw().to_string(), title: a.title, artist: a.artist, year: a.year, thumb: best(&a.thumbnails),
             }).collect(),
-            SearchKind::Artists => out.artists = api.search_artists(q).await?.into_iter().map(|a| ArtistRef {
+            SearchKind::Artists => out.artists = net(api.search_artists(q)).await?.into_iter().map(|a| ArtistRef {
                 channel_id: a.browse_id.get_raw().to_string(), name: a.artist, subscribers: a.subscribers, thumb: best(&a.thumbnails),
             }).collect(),
             SearchKind::Playlists => {
-                out.playlists = api.search_featured_playlists(q).await?.into_iter().map(|a| PlaylistRef {
+                out.playlists = net(api.search_featured_playlists(q)).await?.into_iter().map(|a| PlaylistRef {
                     playlist_id: a.playlist_id.get_raw().to_string(), title: a.title, author: a.author, thumb: best(&a.thumbnails),
                 }).collect();
-                out.playlists.extend(api.search_community_playlists(q).await?.into_iter().filter_map(|a| match a {
+                out.playlists.extend(net(api.search_community_playlists(q)).await?.into_iter().filter_map(|a| match a {
                     p::SearchResultPlaylist::Community(a) => Some(PlaylistRef { playlist_id: a.playlist_id.get_raw().to_string(), title: a.title, author: a.author, thumb: best(&a.thumbnails) }),
                     p::SearchResultPlaylist::Featured(a) => Some(PlaylistRef { playlist_id: a.playlist_id.get_raw().to_string(), title: a.title, author: a.author, thumb: best(&a.thumbnails) }),
                     _ => None,
@@ -77,7 +77,7 @@ impl Ytm {
 
     pub async fn album(&self, browse_id: &str) -> Result<Album> {
         let api = self.api().await?;
-        let a = api.get_album(AlbumID::from_raw(browse_id)).await?;
+        let a = net(api.get_album(AlbumID::from_raw(browse_id))).await?;
         let artists: Vec<String> = a.artists.iter().map(|x| x.name.clone()).collect();
         let thumb = best(&a.thumbnails);
         Ok(Album {
@@ -90,7 +90,7 @@ impl Ytm {
 
     pub async fn artist(&self, channel_id: &str) -> Result<Artist> {
         let api = self.api().await?;
-        let a = api.get_artist(ArtistChannelID::from_raw(channel_id)).await?;
+        let a = net(api.get_artist(ArtistChannelID::from_raw(channel_id))).await?;
         let r = a.top_releases;
         Ok(Artist {
             channel_id: a.channel_id.get_raw().to_string(), name: a.name, subscribers: a.subscribers, description: a.description, thumb: best(&a.thumbnails),
@@ -107,7 +107,7 @@ impl Ytm {
         // Browse ids need the `VL` prefix; the home/mood lists already carry it, watch-page ids (`RDCLAK…`, `PL…`) do not.
         let playlist_id = if playlist_id.starts_with("VL") { playlist_id.to_string() } else { format!("VL{playlist_id}") };
         let id = || PlaylistID::from_raw(playlist_id.clone());
-        let (d, items) = tokio::try_join!(api.get_playlist_details(id()), api.get_playlist_tracks(id()))?;
+        let (d, items) = tokio::try_join!(net(api.get_playlist_details(id())), net(api.get_playlist_tracks(id())))?;
         Ok(PlaylistPage {
             playlist_id: playlist_id.trim_start_matches("VL").to_string(), title: d.title, author: d.author, thumb: best(&d.thumbnails),
             tracks: items.into_iter().filter_map(|i| match i {
@@ -125,7 +125,7 @@ impl Ytm {
 
     pub async fn search_podcasts(&self, q: &str) -> Result<Vec<PodcastRef>> {
         let api = self.api().await?;
-        Ok(api.search_podcasts(q).await?.into_iter().map(|p| PodcastRef {
+        Ok(net(api.search_podcasts(q)).await?.into_iter().map(|p| PodcastRef {
             podcast_id: p.podcast_id.get_raw().to_string(), title: p.title, publisher: p.publisher, thumb: best(&p.thumbnails),
         }).collect())
     }
@@ -133,7 +133,7 @@ impl Ytm {
     /// Episodes come back as `Track`s; `video_id` is the playable id (plays through `stream` like any video).
     pub async fn podcast(&self, podcast_id: &str) -> Result<Podcast> {
         let api = self.api().await?;
-        let p = api.get_podcast(PodcastID::from_raw(podcast_id)).await?;
+        let p = net(api.get_podcast(PodcastID::from_raw(podcast_id))).await?;
         // The podcast page has no cover of its own; the first episode's art stands in for it.
         let thumb = p.episodes.first().and_then(|e| best(&e.thumbnails));
         Ok(Podcast {
@@ -155,7 +155,7 @@ impl Ytm {
 
     pub async fn moods(&self) -> Result<Vec<Mood>> {
         let api = self.api().await?;
-        Ok(api.get_mood_categories().await?.into_iter().flat_map(|s| {
+        Ok(net(api.get_mood_categories()).await?.into_iter().flat_map(|s| {
             let section = s.section_name;
             s.mood_categories.into_iter().map(move |m| Mood { section: section.clone(), title: m.title, params: m.params.get_raw().to_string() })
         }).collect())
@@ -164,7 +164,7 @@ impl Ytm {
     pub async fn mood_playlists(&self, params: &str) -> Result<Vec<PlaylistRef>> {
         let api = self.api().await?;
         let params = ytmapi_rs::common::MoodCategoryParams::from_raw(params.to_string());
-        Ok(api.get_mood_playlists(params).await?.into_iter().flat_map(|c| c.playlists).map(|a| PlaylistRef {
+        Ok(net(api.get_mood_playlists(params)).await?.into_iter().flat_map(|c| c.playlists).map(|a| PlaylistRef {
             playlist_id: a.playlist_id.get_raw().to_string(), title: a.title, author: a.author, thumb: best(&a.thumbnails),
         }).collect())
     }

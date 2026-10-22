@@ -42,6 +42,8 @@ impl TextureCache {
 pub struct Images {
     rt: tokio::runtime::Handle,
     http: reqwest::Client,
+    /// Caps parallel downloads so a page of covers can't crowd out the audio stream on a slow link.
+    gate: std::sync::Arc<tokio::sync::Semaphore>,
     dir: PathBuf,
     mem: Rc<RefCell<TextureCache>>,
     waiting: Rc<RefCell<HashMap<String, Vec<Callback>>>>,
@@ -68,8 +70,8 @@ impl Images {
         let base = std::env::var_os("XDG_CACHE_HOME").map(PathBuf::from).or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cache"))).unwrap_or_else(|| PathBuf::from("/tmp"));
         let dir = base.join("harv").join("thumbs");
         let _ = std::fs::create_dir_all(&dir);
-        let http = reqwest::Client::builder().user_agent("harv/0.1").timeout(std::time::Duration::from_secs(20)).build().expect("http client");
-        Self { rt, http, dir, mem: Rc::default(), waiting: Rc::default() }
+        let http = reqwest::Client::builder().user_agent("harv/0.1").connect_timeout(std::time::Duration::from_secs(8)).timeout(std::time::Duration::from_secs(20)).build().expect("http client");
+        Self { rt, http, gate: std::sync::Arc::new(tokio::sync::Semaphore::new(6)), dir, mem: Rc::default(), waiting: Rc::default() }
     }
 
     /// Texture for `url` at roughly `px` pixels (callback runs on the main loop, `None` on failure).
@@ -81,10 +83,10 @@ impl Images {
             if let Some(list) = w.get_mut(&url) { list.push(Box::new(cb)); return; }
             w.insert(url.clone(), vec![Box::new(cb)]);
         }
-        let (http, path) = (self.http.clone(), self.dir.join(format!("{:016x}", hash(&url))));
+        let (http, gate, path) = (self.http.clone(), self.gate.clone(), self.dir.join(format!("{:016x}", hash(&url))));
         let u = url.clone();
         let me = self.clone();
-        ctx.spawn(async move { fetch(&http, &u, &path).await }, move |bytes| {
+        ctx.spawn(async move { fetch(&http, &gate, &u, &path).await }, move |bytes| {
             let tex = bytes.and_then(|b| gdk::Texture::from_bytes(&glib::Bytes::from_owned(b)).ok());
             if let Some(t) = &tex { me.mem.borrow_mut().insert(url.clone(), t.clone()); }
             for cb in me.waiting.borrow_mut().remove(&url).unwrap_or_default() { cb(tex.clone()); }
@@ -94,8 +96,8 @@ impl Images {
     /// Raw bytes (disk-cached) for the now-playing cover, which needs pixels rather than a texture.
     pub fn bytes(&self, url: &str, px: u32) -> impl std::future::Future<Output = Option<Vec<u8>>> + Send + 'static {
         let url = sized(url, px);
-        let (http, path) = (self.http.clone(), self.dir.join(format!("{:016x}", hash(&url))));
-        async move { fetch(&http, &url, &path).await }
+        let (http, gate, path) = (self.http.clone(), self.gate.clone(), self.dir.join(format!("{:016x}", hash(&url))));
+        async move { fetch(&http, &gate, &url, &path).await }
     }
 
     /// (files, bytes) of the on-disk thumbnail cache.
@@ -113,8 +115,9 @@ impl Images {
     pub fn rt(&self) -> &tokio::runtime::Handle { &self.rt }
 }
 
-async fn fetch(http: &reqwest::Client, url: &str, path: &PathBuf) -> Option<Vec<u8>> {
+async fn fetch(http: &reqwest::Client, gate: &tokio::sync::Semaphore, url: &str, path: &PathBuf) -> Option<Vec<u8>> {
     if let Ok(b) = tokio::fs::read(path).await { if !b.is_empty() { return Some(b); } }
+    let _permit = gate.acquire().await.ok()?;
     let r = http.get(url).send().await.ok()?.error_for_status().ok()?;
     let b = r.bytes().await.ok()?.to_vec();
     let _ = tokio::fs::write(path, &b).await;

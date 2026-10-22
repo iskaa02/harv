@@ -69,13 +69,19 @@ fn push_volume(mpv: &Mpv, master: f64, sleep: f64, fade: f64) -> Result<()> {
 fn new_mpv() -> Result<Mpv> {
     let mpv = Mpv::with_initializer(|i| {
         for (k, v) in [("video", "no"), ("vid", "no"), ("audio-display", "no"), ("force-window", "no"), ("ytdl", "no"), ("idle", "yes"), ("keep-open", "no"),
-                       ("terminal", "no"), ("input-default-bindings", "no"), ("load-scripts", "no"), ("audio-client-name", "harv"), ("cache", "yes"), ("demuxer-max-bytes", "8MiB"), ("demuxer-max-back-bytes", "1MiB")] {
+                       ("terminal", "no"), ("input-default-bindings", "no"), ("load-scripts", "no"), ("audio-client-name", "harv"), ("cache", "yes"), ("demuxer-max-bytes", "24MiB"), ("demuxer-max-back-bytes", "1MiB")] {
             i.set_option(k, v)?;
         }
         // mpv's bundled Lua scripts (stats, console, select, …) load even with `load-scripts=no`: one VM and thread each, per deck.
         // Older libmpv builds don't know every key, so these are best-effort.
         for k in ["load-stats-overlay", "load-osd-console", "load-console", "load-commands", "load-select", "load-context-menu", "load-positioning", "load-auto-profiles"] {
             let _ = i.set_option(k, "no");
+        }
+        // Flaky-network resilience (best-effort like the above): read well ahead, wait for a real buffer after an underrun instead of
+        // stuttering on/off, give up on a dead socket, and let ffmpeg re-open dropped HTTP connections.
+        for (k, v) in [("demuxer-readahead-secs", "60"), ("cache-secs", "60"), ("cache-pause", "yes"), ("cache-pause-wait", "5"), ("network-timeout", "15"),
+                       ("stream-lavf-o", "reconnect=1,reconnect_streamed=1,reconnect_on_network_error=1,reconnect_delay_max=8")] {
+            let _ = i.set_option(k, v);
         }
         // Escape hatch for headless runs (`HARV_AO=null`).
         if let Ok(ao) = std::env::var("HARV_AO") { i.set_option("ao", ao.as_str())?; }

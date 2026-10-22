@@ -362,7 +362,8 @@ impl Actor {
 
     /// A track is now playing: warm the next stream and refill radio when the queue is nearly used up.
     fn after_start(&mut self) {
-        for n in self.queue.peek_ahead(3) { self.ytm.prefetch_stream(&n.video_id, self.quality); }
+        // Only the next track, and not until the current one has had a few seconds to buffer: on a slow link they would compete for bandwidth.
+        for n in self.queue.peek_ahead(1) { self.ytm.prefetch_stream_after(&n.video_id, self.quality, std::time::Duration::from_secs(6)); }
         if self.queue.repeat() == Repeat::Off && self.queue.remaining() <= 1 { self.request_radio(false); }
     }
 

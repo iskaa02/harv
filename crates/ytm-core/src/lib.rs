@@ -107,6 +107,18 @@ pub struct Mood {
     pub params: String,
 }
 
+/// Upper bounds for every request: a dead or crawling connection must turn into an error (with a Retry button) rather than a spinner.
+pub(crate) const NET_CONNECT: std::time::Duration = std::time::Duration::from_secs(8);
+pub(crate) const NET_TOTAL: std::time::Duration = std::time::Duration::from_secs(20);
+
+/// Run a `ytmapi-rs` call under [`NET_TOTAL`] (that crate builds its own HTTP client, so there is no timeout to configure).
+pub(crate) async fn net<T, E: Into<anyhow::Error>>(f: impl std::future::Future<Output = std::result::Result<T, E>>) -> Result<T> {
+    match tokio::time::timeout(NET_TOTAL, f).await {
+        Ok(r) => r.map_err(Into::into),
+        Err(_) => Err(anyhow::anyhow!("request timed out")),
+    }
+}
+
 pub struct Ytm {
     /// Created on first use: building it makes a network request, and the app must still start offline.
     api: tokio::sync::OnceCell<ytmapi_rs::YtMusic<ytmapi_rs::auth::noauth::NoAuthToken>>,
@@ -118,13 +130,13 @@ impl Ytm {
     pub async fn new() -> Result<Self> {
         Ok(Self {
             api: tokio::sync::OnceCell::new(),
-            http: reqwest::Client::builder().user_agent("Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0").build()?,
+            http: reqwest::Client::builder().user_agent("Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0").connect_timeout(NET_CONNECT).timeout(NET_TOTAL).build()?,
             streams: Arc::new(stream::StreamResolver::new()),
         })
     }
 
     pub(crate) async fn api(&self) -> Result<&ytmapi_rs::YtMusic<ytmapi_rs::auth::noauth::NoAuthToken>> {
-        Ok(self.api.get_or_try_init(|| async { ytmapi_rs::YtMusic::new_unauthenticated().await }).await?)
+        Ok(self.api.get_or_try_init(|| net(ytmapi_rs::YtMusic::new_unauthenticated())).await?)
     }
 
     /// Resolve a playable audio URL (cached until shortly before it expires).
@@ -142,6 +154,11 @@ impl Ytm {
     pub fn prefetch_stream(&self, video_id: &str, quality: Quality) {
         let (streams, id) = (self.streams.clone(), video_id.to_string());
         tokio::spawn(async move { let _ = streams.resolve(&id, quality).await; });
+    }
+    /// Like [`Self::prefetch_stream`] but after `delay`, so the track that just started gets the bandwidth to fill its buffer first.
+    pub fn prefetch_stream_after(&self, video_id: &str, quality: Quality, delay: std::time::Duration) {
+        let (streams, id) = (self.streams.clone(), video_id.to_string());
+        tokio::spawn(async move { tokio::time::sleep(delay).await; let _ = streams.resolve(&id, quality).await; });
     }
 }
 

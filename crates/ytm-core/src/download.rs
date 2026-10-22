@@ -12,7 +12,7 @@ impl Ytm {
         if let Some(existing) = std::fs::read_dir(dest_dir)?.filter_map(|e| e.ok()).map(|e| e.path()).find(|p| p.file_stem().and_then(|s| s.to_str()) == Some(video_id)) { return Ok(existing); }
         let bin = ytdlp_bin();
         let mut cmd = Command::new(&bin);
-        cmd.args(["-f", "bestaudio[ext=m4a]/bestaudio", "--no-playlist", "--no-warnings", "-o"]).arg(dest_dir.join("%(id)s.%(ext)s")).args(["--print", "after_move:filepath"]);
+        cmd.args(["-f", "bestaudio[ext=m4a]/bestaudio", "--no-playlist", "--no-warnings", "--socket-timeout", "15", "-o"]).arg(dest_dir.join("%(id)s.%(ext)s")).args(["--print", "after_move:filepath"]);
         if let Some(c) = self.streams.cookies() { cmd.arg("--cookies").arg(c); }
         let out = cmd.arg(format!("https://music.youtube.com/watch?v={video_id}"))
             .output().await.with_context(|| format!("failed to run `{bin}` (set YTM_YTDLP to override)"))?;
