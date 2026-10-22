@@ -1,7 +1,7 @@
 //! Remote thumbnails: memory cache of `gdk::Texture`s + on-disk cache of the downloaded bytes.
 //! Downloads run on the tokio runtime; textures are built on the main thread.
 
-use gtk::{gdk, glib};
+use gtk::{gdk, glib, prelude::TextureExt};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -9,12 +9,41 @@ use std::rc::Rc;
 
 type Callback = Box<dyn FnOnce(Option<gdk::Texture>)>;
 
+/// Decoded thumbnails kept for instant re-display, least recently used dropped first once their pixels pass `BUDGET`.
+/// Evicting only drops the cache's reference: a texture still shown by a widget stays alive until that widget lets go.
+const BUDGET: usize = 24 << 20;
+
+#[derive(Default)]
+struct TextureCache { map: HashMap<String, gdk::Texture>, order: Vec<String>, bytes: usize }
+
+fn cost(t: &gdk::Texture) -> usize { (t.width() * t.height() * 4) as usize }
+
+impl TextureCache {
+    fn get(&mut self, url: &str) -> Option<gdk::Texture> {
+        let t = self.map.get(url)?.clone();
+        if let Some(i) = self.order.iter().position(|u| u == url) { let u = self.order.remove(i); self.order.push(u); }
+        Some(t)
+    }
+
+    fn insert(&mut self, url: String, t: gdk::Texture) {
+        self.bytes += cost(&t);
+        if let Some(old) = self.map.insert(url.clone(), t) { self.bytes -= cost(&old); self.order.retain(|u| *u != url); }
+        self.order.push(url);
+        while self.bytes > BUDGET && self.order.len() > 1 {
+            let oldest = self.order.remove(0);
+            if let Some(t) = self.map.remove(&oldest) { self.bytes -= cost(&t); }
+        }
+    }
+
+    fn clear(&mut self) { *self = Self::default(); }
+}
+
 #[derive(Clone)]
 pub struct Images {
     rt: tokio::runtime::Handle,
     http: reqwest::Client,
     dir: PathBuf,
-    mem: Rc<RefCell<HashMap<String, gdk::Texture>>>,
+    mem: Rc<RefCell<TextureCache>>,
     waiting: Rc<RefCell<HashMap<String, Vec<Callback>>>>,
 }
 
@@ -46,7 +75,7 @@ impl Images {
     /// Texture for `url` at roughly `px` pixels (callback runs on the main loop, `None` on failure).
     pub fn load(&self, ctx: &Rc<crate::ctx::Ctx>, url: &str, px: u32, cb: impl FnOnce(Option<gdk::Texture>) + 'static) {
         let url = sized(url, px);
-        if let Some(t) = self.mem.borrow().get(&url) { cb(Some(t.clone())); return; }
+        if let Some(t) = self.mem.borrow_mut().get(&url) { cb(Some(t)); return; }
         {
             let mut w = self.waiting.borrow_mut();
             if let Some(list) = w.get_mut(&url) { list.push(Box::new(cb)); return; }

@@ -18,6 +18,17 @@ Harv is an **unofficial** client. It is not affiliated with, endorsed by or spon
 
 Build needs `gtk4-devel libadwaita-devel mpv-devel` and a Rust toolchain (edition 2024). Running needs `yt-dlp`, and the Inter font for the intended look.
 
+## Packages (.deb and .rpm)
+
+Pushing a `vX.Y.Z` tag runs the [Packages workflow](.github/workflows/packages.yml), which builds a `.deb` (on Ubuntu 24.04, via `cargo-deb`) and an `.rpm` (in a Fedora 42 container, via `cargo-generate-rpm`) and attaches both to a GitHub pre-release. Download them from the repository's Releases page:
+
+```sh
+sudo apt install ./harv_*.deb     # Debian / Ubuntu
+sudo dnf install ./harv-*.rpm     # Fedora
+```
+
+The tag must match `version` in `apps/harv/Cargo.toml`, or the release step fails. You still need `yt-dlp` installed to play anything, and the Inter font for the intended look.
+
 ## Install (current user)
 
 ```sh
@@ -28,6 +39,16 @@ Build needs `gtk4-devel libadwaita-devel mpv-devel` and a Rust toolchain (editio
 
 Build needs `gtk4-devel libadwaita-devel mpv-devel`; running needs `yt-dlp` (and the Inter font for the intended look).
 Icon source: `packaging/dev.harv.Harv.svg`.
+
+## Extra themes
+
+Community/custom themes live in [harv-themes](https://github.com/iskaa02/harv-themes). Install them all with one command, then pick one in Preferences → Appearance → Style:
+
+```sh
+git clone https://github.com/iskaa02/harv-themes ~/.config/harv/themes
+```
+
+(If `~/.config/harv/themes` already exists, see the repo's README for a merge-in variant.)
 
 ## Run
 

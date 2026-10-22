@@ -140,6 +140,10 @@ pub struct State {
     lay: layout::Layout,
     key: (i32, i32),
     layouts: Vec<pango::Layout>,
+    /// Plain mode: each line as a white alpha mask, rendered once and scaled by the GPU while its size animates (see `Paint::line_tex`).
+    line_tex: Vec<Option<LineTex>>,
+    /// Each line's scale in the previous frame (plain mode), to tell which lines are mid-animation.
+    prev_sc: Vec<f32>,
     heights: Vec<f32>,
     tops: Vec<f32>,
     title: Option<pango::Layout>,
@@ -232,6 +236,8 @@ impl LyricsView {
             lay: layout::compute(1000.0, 700.0, 0.0),
             key: (0, 0),
             layouts: Vec::new(),
+            line_tex: Vec::new(),
+            prev_sc: Vec::new(),
             heights: Vec::new(),
             tops: Vec::new(),
             title: None,
@@ -309,6 +315,8 @@ impl LyricsView {
             s.heights = vec![0.0; lines.len()];
             s.tops = vec![0.0; lines.len()];
             s.layouts = Vec::new();
+            s.line_tex = Vec::new();
+            s.prev_sc = Vec::new();
             s.lines = lines;
             s.sync = sync;
             s.scene.set_lines(times);
@@ -546,6 +554,8 @@ impl LyricsView {
             let k = if plain { style.far_ratio() } else { 1.0 };
             let mut y = 0.0;
             s.tops = s.heights.iter().map(|h| { let t = y; y += h * k + lay.line_gap; t }).collect();
+            s.line_tex = vec![None; lines.len()];
+            s.prev_sc = vec![f32::NAN; lines.len()];
             s.layouts = lines;
             s.attr_line = None;
             s.title = title;
@@ -562,10 +572,11 @@ impl LyricsView {
         if w == 0.0 {
             return;
         }
+        let gpu = self.native().and_then(|n| n.renderer().map(|r| (r, n.surface().map_or(1.0, |sf| sf.scale() as f32))));
         self.with(|s| {
             if s.style.backdrop { draw_background(snap, s, w, h); }
             if !s.style.is_plain() { draw_meta(snap, s); }
-            draw_lyrics(snap, s);
+            draw_lyrics(snap, s, gpu.as_ref());
         });
     }
 }
@@ -923,6 +934,21 @@ impl Paint<'_> {
         snap.restore();
     }
 
+    /// Same placement as [`Paint::line`], from a cached mask texture tinted with `col`.
+    fn line_tex(&self, snap: &gtk::Snapshot, t: &LineTex, y: f32, lh: f32, sc: f32, rtl: bool, alpha: f32, col: [f32; 4]) {
+        let l = self.l;
+        snap.save();
+        let ox = if self.center { l.lyrics_w * 0.5 } else if rtl { l.lyrics_w } else { 0.0 };
+        snap.translate(&graphene::Point::new(l.lyrics_x + ox, y + lh / 2.0));
+        snap.scale(sc, sc);
+        snap.translate(&graphene::Point::new(-ox, -lh / 2.0));
+        // White mask → `col`: rgb comes from the offset, alpha (line alpha × colour alpha) scales the mask.
+        snap.push_color_matrix(&graphene::Matrix::from_float([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, col[3] * alpha]), &graphene::Vec4::new(col[0], col[1], col[2], 0.0));
+        snap.append_texture(&t.tex, &rect(-LineTex::PAD, -LineTex::PAD, t.w, t.h));
+        snap.pop();
+        snap.restore();
+    }
+
     /// Interlude / intro marker: three dots that fill one after another as `progress` goes 0 → 1.
     fn dots(&self, snap: &gtk::Snapshot, cy: f32, progress: f32, alpha: f32, breath: f32, col: [f32; 4]) {
         let l = self.l;
@@ -942,7 +968,26 @@ impl Paint<'_> {
     }
 }
 
-fn draw_lyrics(snap: &gtk::Snapshot, s: &mut State) {
+/// One lyric line rendered white-on-transparent at its own size, padded by [`LineTex::PAD`] for glyph overhang.
+#[derive(Clone)]
+struct LineTex { tex: gdk::Texture, w: f32, h: f32 }
+
+impl LineTex {
+    const PAD: f32 = 6.0;
+
+    fn render(renderer: &gsk::Renderer, dev: f32, layout: &pango::Layout, w: f32, lh: f32) -> Option<Self> {
+        let (tw, th) = (w + 2.0 * Self::PAD, lh + 2.0 * Self::PAD);
+        let snap = gtk::Snapshot::new();
+        snap.scale(dev, dev);
+        snap.translate(&graphene::Point::new(Self::PAD, Self::PAD));
+        snap.append_layout(layout, &gdk::RGBA::WHITE);
+        let node = snap.to_node()?;
+        let tex = renderer.render_texture(&node, Some(&rect(0.0, 0.0, tw * dev, th * dev)));
+        Some(Self { tex, w: tw, h: th })
+    }
+}
+
+fn draw_lyrics(snap: &gtk::Snapshot, s: &mut State, gpu: Option<&(gsk::Renderer, f32)>) {
     let l = s.lay;
     let plain = s.style.is_plain();
     let paint = Paint { l: &l, center: s.style.align == Align::Center };
@@ -957,6 +1002,15 @@ fn draw_lyrics(snap: &gtk::Snapshot, s: &mut State) {
     let (blur_k, glow_k) = (s.style.blur, s.style.glow);
     let intro_col = if plain { s.style.colors.active } else { white };
     let hover_col = if plain { let a = s.style.colors.active; [a[0], a[1], a[2], 0.08] } else { [s.style.tint[0], s.style.tint[1], s.style.tint[2], 0.07] };
+
+    // Plain mode: render one missing line mask per frame, nearest the active line first, so they are ready before a line moves.
+    if plain {
+        if let Some((r, dev)) = gpu {
+            let at = s.scene.active.unwrap_or(0) as i32;
+            let next = (-2..=8).map(|d| at + d).filter(|&i| i >= 0 && s.scene.active != Some(i as usize) && (i as usize) < s.layouts.len() && s.line_tex[i as usize].is_none() && !s.lines[i as usize].instrumental).min_by_key(|&i| (i - at).abs());
+            if let Some(i) = next { s.line_tex[i as usize] = LineTex::render(r, *dev, &s.layouts[i as usize], l.lyrics_w, s.heights[i as usize]); }
+        }
+    }
 
     // Previous song's lines leave first, nearest the active line first.
     for g in &s.tr.leaving {
@@ -1008,8 +1062,20 @@ fn draw_lyrics(snap: &gtk::Snapshot, s: &mut State) {
             paint.dots(snap, y + lh * sc / 2.0, progress, alpha.max(0.0), b * v.focus, col);
         } else {
             let rtl = pango::find_base_dir(&s.lines[i].text) == pango::Direction::Rtl;
-            paint.line(snap, layout, y, lh, sc, rtl, alpha, blur, glow, col);
+            // Plain mode: while playing (or while a line's size is animating) every line but the active one is drawn from a cached
+            // mask instead of live text. GTK re-rasterises a text node's glyphs whenever its scale changes, which cost ~4 ms
+            // per frame in each line change; the mask is just a textured quad. Paused and settled lines stay crisp live text.
+            let textured = plain && gpu.is_some() && s.scene.active != Some(i) && (s.scene.playing || s.prev_sc.get(i).is_some_and(|p| (p - sc).abs() > 1e-4));
+            if textured && s.line_tex[i].is_none() {
+                let (r, dev) = gpu.unwrap();
+                s.line_tex[i] = LineTex::render(r, *dev, layout, l.lyrics_w, lh);
+            }
+            match s.line_tex.get(i).and_then(|t| t.as_ref()).filter(|_| textured) {
+                Some(t) => paint.line_tex(snap, t, y, lh, sc, rtl, alpha, col),
+                None => paint.line(snap, layout, y, lh, sc, rtl, alpha, blur, glow, col),
+            }
         }
+        if plain { if let Some(p) = s.prev_sc.get_mut(i) { *p = sc; } }
     }
 
     // Intro: dots above the first line while the song has not started singing.

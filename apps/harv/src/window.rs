@@ -243,7 +243,7 @@ pub fn build(app: &adw::Application, ctx: &Rc<Ctx>, size: (i32, i32)) -> Window 
             let focus = gtk::prelude::GtkWindowExt::focus(&win2);
             let typing = focus.as_ref().is_some_and(|w| w.is::<gtk::Text>() || w.is::<gtk::Entry>() || w.is::<gtk::TextView>());
             let ctrl = state.contains(gdk::ModifierType::CONTROL_MASK);
-            if ctrl && key == gdk::Key::k { crate::palette::toggle(&ctx2, &show, ""); return gtk::glib::Propagation::Stop; }
+            if ctrl && (key == gdk::Key::k || key == gdk::Key::p) { crate::palette::toggle(&ctx2, &show, ""); return gtk::glib::Propagation::Stop; }
             if ctrl && key == gdk::Key::f { close_full(&stack, &np_f); show(Root::Search); return gtk::glib::Propagation::Stop; }
             if typing { return gtk::glib::Propagation::Proceed; }
             if ctrl && key == gdk::Key::l {
