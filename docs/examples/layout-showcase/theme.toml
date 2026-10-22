@@ -1,0 +1,40 @@
+#:schema ../../theme.schema.json
+# Shell and page layout options on top of Blur: sidebar on the right (always icons), the player bar above the pages,
+# a right panel on the left, and themed Home / Artist pages built from the shelf components.
+[meta]
+name = "Layout Showcase"
+extends = "blur"
+scheme = "dark"
+
+[shell.sidebar]
+style = "custom"
+position = "right"        # left | right
+collapse = "always"       # auto | always (icons only) | never
+items = ["home", "search", "charts", "favorites", "recent", "downloads"]
+brand = false
+prefs = true
+
+[shell.bottom_bar]
+position = "top"          # bottom | top
+
+[shell]
+panel_side = "left"       # side the [page.*] right panel uses
+
+[page.home]
+right_w = 260
+main = [
+  { c = "heading", text = "Good to see you" },
+  { c = "shelf", key = "recent", style = "row" },
+  { c = "shelves", style = "grid", columns = 5, limit = 10, skip = ["recent"] },
+]
+right = [
+  { c = "text", text = "UP NEXT", class = "panel-label" },
+  { c = "queue-list", limit = 6 },
+]
+
+[page.artist]
+main = [
+  { c = "hero", cover = 200, shape = "round" },
+  { c = "track-list", style = "rows", cover = 44 },
+  { c = "shelves", style = "row" },
+]

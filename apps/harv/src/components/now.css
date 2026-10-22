@@ -1,34 +1,34 @@
 /* now-playing page components (now.rs): token-driven rules, templated like the app stylesheet. Themes restyle the page through the .nowp-page class and the classes below, in their own now block of style.css. */
 
 .nowp-page { color: @fg; }
-.nowp-title { font-weight: 700; color: @fg; letter-spacing: -0.01em; }
+.nowp-title { font-weight: {{fw:700}}; color: @fg; letter-spacing: -0.01em; }
 .nowp-sub { color: @fg_dim; }
-.nowp-counter { font-family: {{font_mono}}; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; color: @fg_dim; }
-.nowp-lyrics-note { color: @fg_dim; font-size: 13px; }
+.nowp-counter { font-family: {{font_mono}}; font-size: {{fs:11}}; font-weight: {{fw:500}}; letter-spacing: 0.06em; color: @fg_dim; }
+.nowp-lyrics-note { color: @fg_dim; font-size: {{fs:13}}; }
 .nowp-art { background-color: alpha(@fg, 0.06); }
 .nowp-shadow { box-shadow: 0 20px 50px alpha(black, {{shadow:0.35}}); }
 
 .nowp-tabs { margin-bottom: 4px; }
 .nowp-tabs .nowp-tab, .nowp-tabs .nowp-tab:hover, .nowp-tabs .nowp-tab:checked, .nowp-tabs .nowp-tab:active { background: none; background-image: none; box-shadow: none; outline: none; }
-.nowp-tab { background: none; box-shadow: none; border: none; border-bottom: 2px solid transparent; border-radius: 0; min-height: 0; padding: 0 0 6px 0; font-weight: 600; color: @fg_dim; }
+.nowp-tab { background: none; box-shadow: none; border: none; border-bottom: 2px solid transparent; border-radius: 0; min-height: 0; padding: 0 0 6px 0; font-weight: {{fw:600}}; color: @fg_dim; }
 .nowp-tab:checked { color: @fg; border-bottom-color: @lib_accent; }
 
 .nowp-next { background: alpha(@fg, 0.05); border: {{border_w}}px solid alpha(@fg, 0.10); border-radius: {{r_md}}px; padding: 12px 14px; }
-.nowp-next-label { font-family: {{font_mono}}; font-size: 11px; color: @fg_dim; }
-.nowp-next-title { font-size: 15px; font-weight: 600; color: @fg; }
-.nowp-next-open { color: @fg_dim; font-size: 13px; }
+.nowp-next-label { font-family: {{font_mono}}; font-size: {{fs:11}}; color: @fg_dim; }
+.nowp-next-title { font-size: {{fs:15}}; font-weight: {{fw:600}}; color: @fg; }
+.nowp-next-open { color: @fg_dim; font-size: {{fs:13}}; }
 
 .nowp-credits { border-top: {{border_w}}px solid alpha(@fg, 0.12); padding-top: 16px; }
-.nowp-credit-key { color: @fg_dim; font-size: 14px; }
-.nowp-credit-val { color: @fg; font-size: 14px; font-weight: 600; }
-.nowp-section { font-family: {{font_mono}}; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: @fg_dim; }
+.nowp-credit-key { color: @fg_dim; font-size: {{fs:14}}; }
+.nowp-credit-val { color: @fg; font-size: {{fs:14}}; font-weight: {{fw:600}}; }
+.nowp-section { font-family: {{font_mono}}; font-size: {{fs:11}}; font-weight: {{fw:600}}; letter-spacing: 0.08em; color: @fg_dim; }
 .nowp-accent { color: @lib_accent; }
 /* transport on the now page (the bar's own rules are scoped to `.themed-bar`) */
 .nowp-transport { margin-top: 8px; }
 .nowp-transport .bar-btn { min-width: 0; min-height: 0; padding: 0; margin: 0; background: transparent; border: none; box-shadow: none; color: alpha(@fg, 0.6); }
-.nowp-transport .bar-btn:hover { color: @fg; background: alpha(@fg, 0.08); border-radius: 999px; }
+.nowp-transport .bar-btn:hover { color: @fg; background: alpha(@fg, {{st:0.08}}); border-radius: 999px; }
 .nowp-transport .bar-btn image { -gtk-icon-size: 18px; }
-.nowp-transport .bar-play { min-width: 0; min-height: 0; padding: 0; margin: 0; background: @play_bg; color: @play_fg; border: none; box-shadow: none; border-radius: 999px; }
+.nowp-transport .bar-play { min-width: 0; min-height: 0; padding: 0; margin: 0; background: @play_bg; color: @play_fg; border: none; box-shadow: none; border-radius: {{r_play}}px; }
 .nowp-transport .bar-play image { -gtk-icon-size: 18px; }
 /* heart + ⋯ beside the title */
 .nowp-act { min-width: 32px; min-height: 32px; padding: 0; color: alpha(@np_fg, 0.6); }

@@ -1,6 +1,6 @@
 //! Page composition for song-list and grid pages, plus the body components (`hero`, `track-list`, `cover-grid`).
 
-use super::{DetailData, Env, GridData, GridItem, PageData, Region};
+use super::{DetailData, Env, GridData, GridItem, PageData, Region, Shelf, ShelfSet};
 use crate::ctx::Ctx;
 use crate::pages;
 use crate::rows::*;
@@ -16,7 +16,7 @@ pub fn compose(ctx: &Rc<Ctx>, kind: &str, data: PageData) -> gtk::Widget {
         let env = Env { ctx, region: Region::Page, data: Some(&data) };
         return super::build_all(&env, &page.main, gtk::Orientation::Vertical, 22).upcast();
     }
-    match &data { PageData::Detail(d) => builtin_detail(ctx, d), PageData::Grid(g) => builtin_grid(ctx, g) }
+    match &data { PageData::Detail(d) => builtin_detail(ctx, d), PageData::Grid(g) => builtin_grid(ctx, g), PageData::Home { title, shelves } => builtin_home(title, shelves) }
 }
 
 /// The original look: header, optional description, then the list (or the empty state).
@@ -31,6 +31,14 @@ fn builtin_detail(ctx: &Rc<Ctx>, d: &DetailData) -> gtk::Widget {
         (Some((icon, title, desc)), true) => col.append(&status(icon, title, desc)),
         _ => col.append(&track_list(ctx, d.tracks.to_vec(), d.queue_kind, d.extras.clone())),
     }
+    col.upcast()
+}
+
+/// The original Home: the page title, then every shelf as a scrolling row.
+fn builtin_home(title: &str, set: &ShelfSet) -> gtk::Widget {
+    let col = pages::column();
+    col.append(&pages::heading(title, ""));
+    for sh in set.shelves.borrow_mut().iter_mut() { sh.used = true; col.append(&shelf(&sh.title, std::mem::take(&mut sh.cards))); }
     col.upcast()
 }
 
@@ -49,7 +57,9 @@ fn builtin_grid(ctx: &Rc<Ctx>, g: &GridData) -> gtk::Widget {
 /// Body components: `hero`, `track-list`, `cover-grid`. Panel components are in `panel`.
 pub fn component(env: &Env, node: &Node) -> Option<gtk::Widget> {
     match node.c.as_str() {
-        "hero" => match env.data? { PageData::Detail(d) => Some(hero(env.ctx, d, node)), PageData::Grid(g) => Some(library_header(env.ctx, g, node)) },
+        "hero" => match env.data? { PageData::Detail(d) => Some(hero(env.ctx, d, node)), PageData::Grid(g) => Some(library_header(env.ctx, g, node)), PageData::Home { .. } => None },
+        "heading" => Some(heading_node(env, node)),
+        "shelf" | "shelves" => shelves_node(env, node),
         "track-list" => match env.data? { PageData::Detail(d) => Some(track_list_node(env.ctx, d, node)), _ => None },
         "cover-grid" => match env.data? { PageData::Grid(g) => Some(cover_grid(env.ctx, g, node)), _ => None },
         _ => None,
@@ -210,4 +220,51 @@ fn grid_card(ctx: &Rc<Ctx>, item: &GridItem, px: i32, round: bool, index: Option
     let f = item.on_click.clone();
     b.connect_clicked(move |_| f());
     b.upcast()
+}
+
+/// `heading`: a page title. `word` (vocabulary key) or `text`; defaults to the page's own title (Home).
+fn heading_node(env: &Env, node: &Node) -> gtk::Widget {
+    let own = match env.data { Some(PageData::Home { title, .. }) => title.clone(), Some(PageData::Detail(d)) => d.title.clone(), Some(PageData::Grid(g)) => g.title.clone(), None => String::new() };
+    let text = node.str("word").map(|k| env.ctx.word(k)).or_else(|| node.str("text").map(str::to_string)).unwrap_or(own);
+    pages::heading(&text, node.str_or("sub", ""))
+}
+
+fn shelf_set<'a>(env: &Env<'a>) -> Option<&'a ShelfSet> {
+    match env.data? { PageData::Home { shelves, .. } => Some(shelves), PageData::Detail(d) => d.shelves.as_ref(), PageData::Grid(_) => None }
+}
+
+/// `shelf` places one shelf, picked by `key` (`recent`, `favorites`, `yt:0`, `albums`, `singles`), `title` or `index`;
+/// `shelves` places every shelf not placed yet, in order, minus `skip` (keys), or only `only`.
+/// Both take `style = "row"` (scrolling row, default) | `"grid"` (wrapping grid), `limit` (cards), `columns` (grid), `title = false`.
+fn shelves_node(env: &Env, node: &Node) -> Option<gtk::Widget> {
+    let set = shelf_set(env)?;
+    let mut all = set.shelves.borrow_mut();
+    let picked: Vec<usize> = if node.c == "shelf" {
+        let found = all.iter().position(|s| !s.used && (node.str("key").is_some_and(|k| s.key == k) || node.str("title").is_some_and(|t| s.title == t) || node.int("index").is_some_and(|i| i >= 0 && all.iter().position(|x| std::ptr::eq(x, s)) == Some(i as usize))));
+        found.into_iter().collect()
+    } else {
+        let (skip, only) = (node.strs("skip"), node.strs("only"));
+        all.iter().enumerate().filter(|(_, s)| !s.used && !skip.contains(&s.key) && (only.is_empty() || only.contains(&s.key))).map(|(i, _)| i).collect()
+    };
+    let col = gtk::Box::new(gtk::Orientation::Vertical, node.int_or("gap", 22) as i32);
+    for i in picked {
+        let sh: &mut Shelf = &mut all[i];
+        sh.used = true;
+        let mut cards = std::mem::take(&mut sh.cards);
+        if cards.is_empty() { continue; }
+        if let Some(n) = node.int("limit") { cards.truncate(n.max(1) as usize); }
+        let show_title = node.bool_or("title", true);
+        match node.str_or("style", "row") {
+            "grid" => {
+                let g = gtk::Box::new(gtk::Orientation::Vertical, 8);
+                if show_title { g.append(&section_title(&sh.title)); }
+                let f = gtk::FlowBox::builder().selection_mode(gtk::SelectionMode::None).homogeneous(true).max_children_per_line(node.int_or("columns", 8).max(1) as u32).min_children_per_line(2).column_spacing(6).row_spacing(10).build();
+                for c in cards { f.append(&c); }
+                g.append(&f);
+                col.append(&g);
+            }
+            _ => col.append(&shelf(if show_title { &sh.title } else { "" }, cards)),
+        }
+    }
+    Some(col.upcast())
 }

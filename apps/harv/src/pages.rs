@@ -1,5 +1,6 @@
 //! Browse pages: home, search, library lists, album / artist / playlist / local-playlist details.
 
+use crate::components::{Shelf, ShelfSet};
 use crate::components::{self, DetailData, GridData, GridItem, PageData};
 use crate::ctx::{Ctx, Nav};
 use crate::rows::*;
@@ -35,10 +36,10 @@ pub fn shell(title: &str, content: &impl IsA<gtk::Widget>, header_extra: Option<
     adw::NavigationPage::builder().title(title).child(&tv).build()
 }
 
-/// Mark a page with its theme page kind (`playlist`, `library`, `search`, `now`); the shell reads it for the right panel.
+/// Mark a page with its theme page kind (`playlist`, `library`, `search`, `now`, `home`, `artist`); the shell reads it for the right panel.
 pub(crate) fn tagged(page: adw::NavigationPage, kind: &str) -> adw::NavigationPage { page.set_widget_name(kind); page }
 
-fn column() -> gtk::Box {
+pub(crate) fn column() -> gtk::Box {
     let b = gtk::Box::new(gtk::Orientation::Vertical, 22);
     b.set_margin_start(20);
     b.set_margin_end(20);
@@ -74,7 +75,7 @@ fn nav_for_browse(id: &str) -> Option<Nav> {
 // ── home ─────────────────────────────────────────────────────────────────────────────────────
 pub fn home(ctx: &Rc<Ctx>) -> adw::NavigationPage {
     let holder = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let page = shell(&ctx.word("home"), &holder, None);
+    let page = tagged(shell(&ctx.word("home"), &holder, None), "home");
     let load = Rc::new({
         let (ctx, holder) = (ctx.clone(), holder.clone());
         move || {
@@ -82,20 +83,20 @@ pub fn home(ctx: &Rc<Ctx>) -> adw::NavigationPage {
             let (c2, h2) = (ctx.clone(), holder.clone());
             let ytm = ctx.ytm.clone();
             ctx.spawn(async move { ytm.home().await.map_err(|e| format!("{e:#}")) }, move |res| {
-                let col = column();
-                col.append(&heading(&c2.word("home"), ""));
-                let local = |title: &str, tracks: Vec<Track>, kind: QueueKind| -> Option<gtk::Widget> {
+                let mut set: Vec<Shelf> = vec![];
+                let local = |key: &str, title: String, tracks: Vec<Track>, kind: QueueKind| -> Option<Shelf> {
                     if tracks.is_empty() { return None; }
                     let all = Rc::new(tracks.clone());
                     let cards = tracks.iter().enumerate().map(|(i, t)| { let (c, all) = (c2.clone(), all.clone()); let w = card(&c2, t.thumb.as_deref(), &t.title, &t.artist_line(), false, move || c.play_row(all.to_vec(), i, kind)); crate::actions::attach_context_menu(&w, &c2, crate::actions::fixed(t.clone()), Default::default()); w }).collect();
-                    Some(shelf(title, cards))
+                    Some(Shelf { key: key.into(), title, cards, used: false })
                 };
                 let show = |key: &str| c2.store.get::<bool>(key).unwrap_or(true);
-                if show("home_recent") { if let Some(s) = local(&c2.word("recent"), rows_to_tracks(c2.store.recently_played(15, 0).unwrap_or_default()), QueueKind::Songs) { col.append(&s); } }
-                if show("home_favorites") { if let Some(s) = local(&c2.word("favorites"), rows_to_tracks(c2.store.liked_songs(15, 0).unwrap_or_default()), QueueKind::Songs) { col.append(&s); } }
+                if show("home_recent") { if let Some(s) = local("recent", c2.word("recent"), rows_to_tracks(c2.store.recently_played(15, 0).unwrap_or_default()), QueueKind::Songs) { set.push(s); } }
+                if show("home_favorites") { if let Some(s) = local("favorites", c2.word("favorites"), rows_to_tracks(c2.store.liked_songs(15, 0).unwrap_or_default()), QueueKind::Songs) { set.push(s); } }
+                let mut failed: Option<String> = None;
                 match res {
                     _ if !show("home_yt") => {}
-                    Ok(shelves) => for sh in shelves {
+                    Ok(shelves) => for (n, sh) in shelves.into_iter().enumerate() {
                         let cards: Vec<gtk::Widget> = sh.items.iter().filter_map(|i| {
                             let c = c2.clone();
                             let round = i.browse_id.as_deref().is_some_and(|b| b.starts_with("UC"));
@@ -111,15 +112,18 @@ pub fn home(ctx: &Rc<Ctx>) -> adw::NavigationPage {
                             if let Some(coll) = coll { crate::actions::attach_collection_menu(&w, &c2, coll, i.title.clone()); }
                             Some(w)
                         }).collect();
-                        if !cards.is_empty() { col.append(&shelf(&sh.title, cards)); }
+                        if !cards.is_empty() { set.push(Shelf { key: format!("yt:{n}"), title: sh.title.clone(), cards, used: false }); }
                     },
-                    Err(e) => {
-                        let (ctx, h) = (c2.clone(), h2.clone());
-                        let retry: Rc<dyn Fn()> = Rc::new(move || { let p = home(&ctx); if let Some(ch) = p.child() { swap(&h, &ch); } });
-                        col.append(&error_state("Couldn't load YouTube Music", &e, Some(retry)));
-                    }
+                    Err(e) => failed = Some(e),
                 }
-                swap(&h2, &col.upcast());
+                // The theme's `[page.home]` layout (or the built-in heading + shelves) places the shelves.
+                let body = components::detail::compose(&c2, "home", PageData::Home { title: c2.word("home"), shelves: ShelfSet::new(set) });
+                if let (Some(e), Ok(col)) = (failed, body.clone().downcast::<gtk::Box>()) {
+                    let (ctx, h) = (c2.clone(), h2.clone());
+                    let retry: Rc<dyn Fn()> = Rc::new(move || { let p = home(&ctx); if let Some(ch) = p.child() { swap(&h, &ch); } });
+                    col.append(&error_state("Couldn't load YouTube Music", &e, Some(retry)));
+                }
+                swap(&h2, &body);
             });
         }
     });
@@ -385,7 +389,7 @@ pub fn album(ctx: &Rc<Ctx>, id: &str) -> adw::NavigationPage {
             let col = column();
             let tracks = Rc::new(a.tracks.clone());
             let btn_ctx = ctx.clone();
-            col.append(&components::detail::compose(&ctx, "playlist", PageData::Detail(DetailData {
+            col.append(&components::detail::compose(&ctx, "playlist", PageData::Detail(DetailData { shelves: None,
                 kind_label: "Album".into(), title: a.title.clone(), subtitle: format!("{} · {}", a.artists.join(", "), a.year), thumb: a.thumb.clone(), round: false, simple: false, description: None,
                 tracks: tracks.clone(), queue_kind: QueueKind::Album, extras: RowExtras { numbered: true, ..Default::default() },
                 buttons: Box::new(move || play_buttons(&btn_ctx, tracks.clone(), QueueKind::Album)), empty: None,
@@ -398,6 +402,7 @@ pub fn album(ctx: &Rc<Ctx>, id: &str) -> adw::NavigationPage {
 
 pub fn artist(ctx: &Rc<Ctx>, id: &str) -> adw::NavigationPage {
     let (page, holder) = loading_page("Artist");
+    let page = tagged(page, "artist");
     let (ytm, id2) = (ctx.ytm.clone(), id.to_string());
     let ctx = ctx.clone();
     ctx.clone().spawn(async move { ytm.artist(&id2).await.map_err(|e| format!("{e:#}")) }, move |res| match res {
@@ -406,6 +411,31 @@ pub fn artist(ctx: &Rc<Ctx>, id: &str) -> adw::NavigationPage {
             let mut a = a;
             // The artist page lists songs without cover art; borrow the artist photo so rows aren't blank.
             for t in &mut a.songs { if t.thumb.is_none() { t.thumb = a.thumb.clone(); } }
+            // A theme with a `[page.artist]` layout composes the page from the shared components (hero, track-list, shelves).
+            if ctx.theme().page.get("artist").is_some_and(|p| !p.main.is_empty()) {
+                let tracks = Rc::new(a.songs.clone());
+                let shelves = ShelfSet::new(vec![
+                    Shelf { key: "albums".into(), title: "Albums".into(), cards: a.albums.iter().map(|x| album_card(&ctx, x)).collect(), used: false },
+                    Shelf { key: "singles".into(), title: "Singles & EPs".into(), cards: a.singles.iter().map(|x| album_card(&ctx, x)).collect(), used: false },
+                ]);
+                let (c2, id, name, thumb, tr2) = (ctx.clone(), a.channel_id.clone(), a.name.clone(), a.thumb.clone(), tracks.clone());
+                let buttons: Box<dyn Fn() -> Vec<gtk::Widget>> = Box::new(move || {
+                    let mut btns = play_buttons(&c2, tr2.clone(), QueueKind::Playlist);
+                    let follow = gtk::ToggleButton::builder().css_classes(["pill"]).build();
+                    let sync = |b: &gtk::ToggleButton| b.set_label(if b.is_active() { "Following" } else { "Follow" });
+                    follow.set_active(c2.store.is_followed(&id));
+                    sync(&follow);
+                    { let (c, id, name, thumb) = (c2.clone(), id.clone(), name.clone(), thumb.clone()); follow.connect_toggled(move |b| { sync(b); let _ = c.store.set_followed(&id, &name, thumb.as_deref(), b.is_active()); }); }
+                    btns.push(follow.upcast());
+                    btns
+                });
+                let body = components::detail::compose(&ctx, "artist", PageData::Detail(DetailData {
+                    kind_label: "Artist".into(), title: a.name.clone(), subtitle: a.subscribers.clone().unwrap_or_default(), thumb: a.thumb.clone(), round: true, simple: false, description: None,
+                    tracks, queue_kind: QueueKind::Songs, extras: RowExtras::default(), buttons, empty: None, shelves: Some(shelves),
+                }));
+                swap(&holder, &body);
+                return;
+            }
             let col = column();
             let mut btns = play_buttons(&ctx, Rc::new(a.songs.clone()), QueueKind::Playlist);
             let follow = gtk::ToggleButton::builder().css_classes(["pill"]).build();
@@ -438,7 +468,7 @@ pub fn playlist(ctx: &Rc<Ctx>, id: &str) -> adw::NavigationPage {
             let col = column();
             let tracks = Rc::new(p.tracks.clone());
             let (btn_ctx, btn_tracks) = (ctx.clone(), tracks.clone());
-            col.append(&components::detail::compose(&ctx, "playlist", PageData::Detail(DetailData {
+            col.append(&components::detail::compose(&ctx, "playlist", PageData::Detail(DetailData { shelves: None,
                 kind_label: "Playlist".into(), title: p.title.clone(), subtitle: p.author.clone(), thumb: p.thumb.clone(), round: false, simple: false, description: None,
                 tracks, queue_kind: QueueKind::Playlist, extras: RowExtras::default(),
                 buttons: Box::new(move || { let mut b = play_buttons(&btn_ctx, btn_tracks.clone(), QueueKind::Playlist); b.push(download_button(&btn_ctx, btn_tracks.to_vec())); b }), empty: None,
@@ -462,7 +492,7 @@ pub fn podcast(ctx: &Rc<Ctx>, id: &str) -> adw::NavigationPage {
             let n = p.episodes.len();
             let tracks = Rc::new(p.episodes.clone());
             let (btn_ctx, btn_tracks) = (ctx.clone(), tracks.clone());
-            col.append(&components::detail::compose(&ctx, "playlist", PageData::Detail(DetailData {
+            col.append(&components::detail::compose(&ctx, "playlist", PageData::Detail(DetailData { shelves: None,
                 kind_label: "Podcast".into(), title: p.title.clone(), subtitle: format!("{n} episodes"), thumb: p.thumb.clone(), round: false, simple: false, description: p.description.clone(),
                 tracks, queue_kind: QueueKind::Playlist, extras: RowExtras::default(),
                 buttons: Box::new(move || play_buttons(&btn_ctx, btn_tracks.clone(), QueueKind::Playlist)), empty: None,
@@ -554,7 +584,7 @@ pub fn local_playlist(ctx: &Rc<Ctx>, id: i64) -> adw::NavigationPage {
             };
             let all = Rc::new(tracks);
             let (btn_ctx, btn_tracks) = (ctx.clone(), all.clone());
-            col.append(&components::detail::compose(&ctx, "playlist", PageData::Detail(DetailData {
+            col.append(&components::detail::compose(&ctx, "playlist", PageData::Detail(DetailData { shelves: None,
                 kind_label: "Playlist".into(), title: info.title.clone(), subtitle: format!("{} songs", all.len()), thumb: info.thumb.clone(), round: false, simple: false, description: None,
                 tracks: all, queue_kind: QueueKind::LocalPlaylist, extras,
                 buttons: Box::new(move || {
@@ -655,7 +685,7 @@ pub fn library(ctx: &Rc<Ctx>, which: Lib) -> adw::NavigationPage {
                     }.unwrap_or_default();
                     let tracks = Rc::new(rows_to_tracks(rows));
                     let (btn_ctx, btn_tracks) = (ctx.clone(), tracks.clone());
-                    col.append(&components::detail::compose(&ctx, "playlist", PageData::Detail(DetailData {
+                    col.append(&components::detail::compose(&ctx, "playlist", PageData::Detail(DetailData { shelves: None,
                         kind_label: String::new(), title: title.clone(), subtitle: format!("{} songs", tracks.len()), thumb: None, round: false, simple: true, description: None,
                         tracks, queue_kind: QueueKind::Songs, extras: RowExtras::default(), empty: Some(no_items),
                         buttons: Box::new(move || {

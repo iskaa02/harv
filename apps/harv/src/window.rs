@@ -32,6 +32,12 @@ pub fn build(app: &adw::Application, ctx: &Rc<Ctx>, size: (i32, i32)) -> Window 
 
     // ---- narrow window: the sidebar collapses to icons (state shared with every sidebar instance); breakpoints are wired below
     let compact = Rc::new(Compact::default());
+    // Whether the narrow breakpoint is applied right now (the theme's `shell.sidebar.collapse` decides what that means for the icons).
+    let narrow_now: Rc<Cell<bool>> = Rc::default();
+    let sync_compact = Rc::new({
+        let (ctx, compact, narrow_now) = (ctx.clone(), compact.clone(), narrow_now.clone());
+        move || compact.set(match ctx.theme().shell.sidebar.collapse.as_str() { "always" => true, "never" => false, _ => narrow_now.get() })
+    });
 
     // ---- root pages (Home and Search keep their state)
     let home = Rc::new(RefCell::new(pages::home(ctx)));
@@ -53,12 +59,13 @@ pub fn build(app: &adw::Application, ctx: &Rc<Ctx>, size: (i32, i32)) -> Window 
     let sidebar_holder = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     sidebar_holder.set_hexpand(false);
     let rebuild_sidebar = Rc::new({
-        let (ctx, holder, compact, show, select_cell, current) = (ctx.clone(), sidebar_holder.clone(), compact.clone(), show_root.clone(), select_cell.clone(), current.clone());
+        let (ctx, holder, compact, show, select_cell, current, sync) = (ctx.clone(), sidebar_holder.clone(), compact.clone(), show_root.clone(), select_cell.clone(), current.clone(), sync_compact.clone());
         move || {
             while let Some(c) = holder.first_child() { holder.remove(&c); }
             let theme = ctx.theme();
             let built = sidebar::build(&ctx, &theme.shell.sidebar, show.clone(), &compact);
             holder.append(&built.widget);
+            sync();
             (built.select)(current.get());
             *select_cell.borrow_mut() = built.select;
         }
@@ -86,10 +93,10 @@ pub fn build(app: &adw::Application, ctx: &Rc<Ctx>, size: (i32, i32)) -> Window 
         let wide = adw::Breakpoint::new(adw::BreakpointCondition::parse("max-width: 1100px").unwrap());
         let narrow = adw::Breakpoint::new(adw::BreakpointCondition::parse("max-width: 940px").unwrap());
         for (bp, is_narrow) in [(&wide, false), (&narrow, true)] {
-            let (n, sq, apply, c) = (applied.clone(), panel_squeezed.clone(), apply_panel_visibility.clone(), compact.clone());
-            bp.connect_apply(move |_| { n.set(n.get() + 1); sq.set(true); apply(); if is_narrow { c.set(true); } });
-            let (n, sq, apply, c) = (applied.clone(), panel_squeezed.clone(), apply_panel_visibility.clone(), compact.clone());
-            bp.connect_unapply(move |_| { n.set(n.get() - 1); sq.set(n.get() > 0); apply(); if is_narrow { c.set(false); } });
+            let (n, sq, apply, nn, sync) = (applied.clone(), panel_squeezed.clone(), apply_panel_visibility.clone(), narrow_now.clone(), sync_compact.clone());
+            bp.connect_apply(move |_| { n.set(n.get() + 1); sq.set(true); apply(); if is_narrow { nn.set(true); sync(); } });
+            let (n, sq, apply, nn, sync) = (applied.clone(), panel_squeezed.clone(), apply_panel_visibility.clone(), narrow_now.clone(), sync_compact.clone());
+            bp.connect_unapply(move |_| { n.set(n.get() - 1); sq.set(n.get() > 0); apply(); if is_narrow { nn.set(false); sync(); } });
         }
         win.add_breakpoint(wide);
         win.add_breakpoint(narrow);
@@ -133,17 +140,25 @@ pub fn build(app: &adw::Application, ctx: &Rc<Ctx>, size: (i32, i32)) -> Window 
     });
     rebuild_bar();
 
-    // ---- browse layout
+    // ---- browse layout: the theme picks the sidebar side, the right panel side and the bar position (see `arrange`)
     let split = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    split.append(&sidebar_holder);
-    split.append(&gtk::Separator::new(gtk::Orientation::Vertical));
-    split.append(&nav);
-    split.append(&panel_sep);
-    split.append(&panel_holder);
+    let sidebar_sep = gtk::Separator::new(gtk::Orientation::Vertical);
     let browse = gtk::Box::new(gtk::Orientation::Vertical, 0);
     split.set_vexpand(true);
-    browse.append(&split);
-    browse.append(&bar_holder);
+    let arrange: Rc<dyn Fn(&theme_core::Theme)> = Rc::new({
+        let (split, browse, sidebar_holder, sidebar_sep, nav, panel_sep, panel_holder, bar_holder) = (split.clone(), browse.clone(), sidebar_holder.clone(), sidebar_sep.clone(), nav.clone(), panel_sep.clone(), panel_holder.clone(), bar_holder.clone());
+        move |t| {
+            for b in [&split, &browse] { while let Some(c) = b.first_child() { b.remove(&c); } }
+            let (sidebar_right, panel_left) = (t.shell.sidebar.position == "right", t.shell.panel_side == "left");
+            if !sidebar_right { split.append(&sidebar_holder); split.append(&sidebar_sep); }
+            if panel_left { split.append(&panel_holder); split.append(&panel_sep); }
+            split.append(&nav);
+            if !panel_left { split.append(&panel_sep); split.append(&panel_holder); }
+            if sidebar_right { split.append(&sidebar_sep); split.append(&sidebar_holder); }
+            if t.shell.bottom_bar.position == "top" { bar_holder.add_css_class("bar-top"); browse.append(&bar_holder); browse.append(&split); } else { bar_holder.remove_css_class("bar-top"); browse.append(&split); browse.append(&bar_holder); }
+        }
+    });
+    arrange(&ctx.theme());
     stack.add_named(&browse, Some("browse"));
 
     // ---- now playing: the full-screen page (classic host) is built lazily; the in-window page is built on demand
@@ -171,6 +186,7 @@ pub fn build(app: &adw::Application, ctx: &Rc<Ctx>, size: (i32, i32)) -> Window 
         let seen_gen = Cell::new(ctx.layout_gen.get());
         ctx.on_theme(move |t| {
             if first.replace(false) { return; } // the initial values were applied above
+            arrange(t);
             rebuild_sidebar();
             rebuild_bar();
             if t.shell.now_playing.host == "fullscreen" { ensure_np(); }

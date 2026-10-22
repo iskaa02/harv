@@ -1,0 +1,2 @@
+/* The right panel has no padding of its own in Blur. */
+.right-panel { padding: 18px 16px; }

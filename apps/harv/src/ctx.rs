@@ -130,14 +130,34 @@ impl Ctx {
         let mut c = if mode != 0 { Self::ACCENTS[mode.min(5)].1 } else if let Some(f) = fixed { f } else { self.last_cover.get().unwrap_or(Self::ACCENTS[1].1) };
         // Keep it bright enough to read on the dark UI (never touch a theme's own fixed accent, nor on light themes).
         let lum = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-        if !theme.light() && !(mode == 0 && fixed.is_some()) && lum < 0.45 { let k = (0.45 - lum) * 1.4; c = [c[0] + k, c[1] + k, c[2] + k].map(|v| v.min(1.0)); }
+        if !theme.light() && theme.material.is_none() && !(mode == 0 && fixed.is_some()) && lum < 0.45 { let k = (0.45 - lum) * 1.4; c = [c[0] + k, c[1] + k, c[2] + k].map(|v| v.min(1.0)); }
+        // Material themes derive the whole scheme from the seed: the user's accent pick, else the cover (`seed = "cover"`), else the
+        // theme's fixed seed (whose scheme is already in the static stylesheet).
+        let seed = self.material_seed(&theme);
+        let material = seed.and_then(|col| theme.material_css(col).map(|css| (css, theme_core::material::generate(col, theme.material.as_ref().map_or(Default::default(), |m| m.variant), !theme.light()))));
+        if let Some((_, roles)) = &material { let p = roles.get("primary"); c = [p.r, p.g, p.b]; }
+        // The stored theme carries the regenerated colours too, so Rust-side readers (lyrics page, theme gallery) follow the cover.
+        if let Some(col) = seed { *self.theme.borrow_mut() = Rc::new(theme.reseeded(col)); }
         self.accent_rgb.set(c);
         let b = |v: f32| (v * 255.0).round() as u8;
         let rgb = format!("rgb({}, {}, {})", b(c[0]), b(c[1]), b(c[2]));
+        let (scheme_css, accent_on) = match &material { Some((css, roles)) => (css.as_str(), roles.get("on_primary").css()), None => ("", theme.colors.accent_on.css()) };
         // libadwaita widgets (switches, suggested buttons, selection) read its own accent names too.
-        self.accent.load_from_string(&format!("@define-color lib_accent {rgb}; @define-color accent_bg_color {rgb}; @define-color accent_color {rgb}; @define-color accent_standalone_color {rgb}; @define-color accent_fg_color {};", theme.colors.accent_on.css()));
+        let accent_css = format!("{scheme_css}@define-color lib_accent {rgb}; @define-color accent_bg_color {rgb}; @define-color accent_color {rgb}; @define-color accent_standalone_color {rgb}; @define-color accent_fg_color {accent_on};");
+        // Dev aid (like HARV_DUMP_CSS): append every accent / scheme stylesheet to this file.
+        if let Some(path) = std::env::var_os("HARV_DUMP_ACCENT") { use std::io::Write; if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) { let _ = writeln!(f, "/* accent */\n{accent_css}"); } }
+        self.accent.load_from_string(&accent_css);
         let hooks: Vec<_> = self.accent_hooks.borrow().clone();
         for h in hooks { h(); }
+    }
+
+    /// The seed a `[material]` theme regenerates its scheme from right now: the user's accent pick, else the cover (`seed = "cover"`).
+    /// None for other themes and for a fixed seed (whose scheme is already in the static stylesheet).
+    pub fn material_seed(&self, theme: &theme_core::Theme) -> Option<theme_core::Color> {
+        let m = theme.material.as_ref()?;
+        let mode: usize = self.store.get("accent").unwrap_or(0);
+        let c = if mode != 0 { Self::ACCENTS[mode.min(5)].1 } else if m.follows_cover() { self.last_cover.get().unwrap_or(Self::ACCENTS[1].1) } else { return None };
+        Some(theme_core::Color { r: c[0], g: c[1], b: c[2], a: 1.0 })
     }
 
     /// The accent in effect (user's choice, theme's fixed colour or the cover's), 0..1 RGB.

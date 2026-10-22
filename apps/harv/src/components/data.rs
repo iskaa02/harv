@@ -3,10 +3,13 @@
 
 use crate::rows::RowExtras;
 use player_core::QueueKind;
+use std::cell::RefCell;
 use std::rc::Rc;
 use ytm_core::Track;
 
 pub enum PageData {
+    /// The Home page: a title and its shelves (recent, favourites, the YouTube Music feed…).
+    Home { title: String, shelves: ShelfSet },
     /// A song list with a header: album, playlist, local playlist, podcast, Favorites / Recent / Most played / Downloads.
     Detail(DetailData),
     /// A grid of cards: local playlists, followed artists.
@@ -32,6 +35,24 @@ pub struct DetailData {
     pub buttons: Box<dyn Fn() -> Vec<gtk::Widget>>,
     /// Shown instead of the list when there are no tracks: (icon, title, description).
     pub empty: Option<(String, String, String)>,
+    /// Card shelves under the list (an artist's albums and singles).
+    pub shelves: Option<ShelfSet>,
+}
+
+/// Shelves of cards a layout can place with the `shelf` / `shelves` components. The cards are widgets (one parent only), so
+/// each shelf is handed out once: the component that takes it marks it `used`.
+pub struct ShelfSet { pub shelves: RefCell<Vec<Shelf>> }
+
+pub struct Shelf {
+    /// `recent`, `favorites`, `albums`, `singles`, or `yt:<n>` for the n-th YouTube Music shelf (0-based).
+    pub key: String,
+    pub title: String,
+    pub cards: Vec<gtk::Widget>,
+    pub used: bool,
+}
+
+impl ShelfSet {
+    pub fn new(shelves: Vec<Shelf>) -> Self { Self { shelves: RefCell::new(shelves) } }
 }
 
 pub struct GridItem {

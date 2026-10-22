@@ -70,6 +70,34 @@ impl Color {
     }
 }
 
+impl Color {
+    /// OKLCH to sRGB; chroma is reduced until the colour fits the sRGB gamut (hue and lightness are kept).
+    pub fn from_oklch(l: f32, c: f32, h_deg: f32) -> Color {
+        let h = h_deg.to_radians();
+        let mut c = c.max(0.0);
+        for _ in 0..48 {
+            let lin = oklab_lin([l, c * h.cos(), c * h.sin()]);
+            if lin.iter().all(|v| (-0.001..=1.001).contains(v)) { break; }
+            c *= 0.93;
+        }
+        from_oklab([l, c * h.cos(), c * h.sin()])
+    }
+
+    /// `(L, C, hue in degrees)`.
+    pub fn oklch(&self) -> (f32, f32, f32) {
+        let [l, a, b] = self.oklab();
+        (l, a.hypot(b), b.atan2(a).to_degrees().rem_euclid(360.0))
+    }
+}
+
+fn oklab_lin([l, a, b]: [f32; 3]) -> [f32; 3] {
+    let l_ = l + 0.396_337_78 * a + 0.215_803_76 * b;
+    let m_ = l - 0.105_561_346 * a - 0.063_854_17 * b;
+    let s_ = l - 0.089_484_18 * a - 1.291_485_5 * b;
+    let (l3, m3, s3) = (l_ * l_ * l_, m_ * m_ * m_, s_ * s_ * s_);
+    [4.076_741_7 * l3 - 3.307_711_6 * m3 + 0.230_969_93 * s3, -1.268_438 * l3 + 2.609_757_4 * m3 - 0.341_319_4 * s3, -0.004_196_086_3 * l3 - 0.703_418_6 * m3 + 1.707_614_7 * s3]
+}
+
 fn from_oklab([l, a, b]: [f32; 3]) -> Color {
     let l_ = l + 0.396_337_78 * a + 0.215_803_76 * b;
     let m_ = l - 0.105_561_346 * a - 0.063_854_17 * b;

@@ -39,6 +39,8 @@ pub struct Sidebar {
     pub items: Vec<String>,
     /// `rounded` | `pill` — shape of the selected row.
     pub item_shape: String,
+    /// `list` (icon beside the label) | `rail` (Material navigation rail: label under the icon, a pill indicator behind the selected icon).
+    pub item_style: String,
     /// Show the app name at the top.
     pub brand: bool,
     /// A search field at the top that opens the Search page (Mixer).
@@ -51,10 +53,14 @@ pub struct Sidebar {
     pub new_playlist: bool,
     /// Show "Preferences" at the bottom.
     pub prefs: bool,
+    /// `left` | `right`: which side of the page the sidebar sits on.
+    pub position: String,
+    /// `auto` (icons only in narrow windows) | `always` (icons only) | `never` (labels even in narrow windows).
+    pub collapse: String,
 }
 
 impl Default for Sidebar {
-    fn default() -> Self { Self { style: "classic".into(), items: vec![], item_shape: "rounded".into(), brand: true, search_box: false, playlist_art: "none".into(), playlists_title: "section_playlists".into(), new_playlist: false, prefs: true } }
+    fn default() -> Self { Self { style: "classic".into(), items: vec![], item_shape: "rounded".into(), item_style: "list".into(), brand: true, search_box: false, playlist_art: "none".into(), playlists_title: "section_playlists".into(), new_playlist: false, prefs: true, position: "left".into(), collapse: "auto".into() } }
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -66,11 +72,13 @@ pub struct BottomBar {
     pub show: String,
     /// Height in px.
     pub height: i32,
+    /// `bottom` | `top`: the bar can sit above the pages instead.
+    pub position: String,
     pub parts: Vec<Node>,
 }
 
 impl Default for BottomBar {
-    fn default() -> Self { Self { style: "classic".into(), show: "always".into(), height: 80, parts: vec![] } }
+    fn default() -> Self { Self { style: "classic".into(), show: "always".into(), height: 80, position: "bottom".into(), parts: vec![] } }
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -82,13 +90,17 @@ pub struct NowPlaying {
 
 impl Default for NowPlaying { fn default() -> Self { Self { host: "fullscreen".into() } } }
 
-#[derive(Deserialize, Clone, Debug, Default)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields, default)]
 pub struct Shell {
     pub sidebar: Sidebar,
     pub bottom_bar: BottomBar,
     pub now_playing: NowPlaying,
+    /// `right` | `left`: side of the page the right panel (`[page.*] right`) uses.
+    pub panel_side: String,
 }
+
+impl Default for Shell { fn default() -> Self { Self { sidebar: Sidebar::default(), bottom_bar: BottomBar::default(), now_playing: NowPlaying::default(), panel_side: "right".into() } } }
 
 /// What a page shows. Missing `main` = the app's built-in composition for that page.
 #[derive(Deserialize, Clone, Debug, Default)]
@@ -101,7 +113,7 @@ pub struct Page {
 }
 
 /// Page kinds themes may lay out.
-pub const PAGE_KINDS: &[&str] = &["playlist", "library", "search", "now"];
+pub const PAGE_KINDS: &[&str] = &["playlist", "library", "search", "now", "home", "artist"];
 
 /// Collect problems in a layout: unknown page kinds, empty component names. (Unknown *components* are checked by the app,
 /// which owns the catalog.)
@@ -117,7 +129,7 @@ pub fn validate(shell: &Shell, pages: &BTreeMap<String, Page>) -> Vec<String> {
         for (i, n) in p.right.iter().enumerate() { walk(n, &format!("page.{k}.right[{i}]"), &mut out); }
     }
     for (i, n) in shell.bottom_bar.parts.iter().enumerate() { walk(n, &format!("shell.bottom_bar.parts[{i}]"), &mut out); }
-    for (what, v, ok) in [("shell.sidebar.style", &shell.sidebar.style, &["classic", "custom"][..]), ("shell.sidebar.item_shape", &shell.sidebar.item_shape, &["rounded", "pill"]), ("shell.sidebar.playlist_art", &shell.sidebar.playlist_art, &["none", "square", "round"]), ("shell.bottom_bar.style", &shell.bottom_bar.style, &["classic", "parts"]), ("shell.bottom_bar.show", &shell.bottom_bar.show, &["always", "except-now", "never"]), ("shell.now_playing.host", &shell.now_playing.host, &["fullscreen", "page"])] {
+    for (what, v, ok) in [("shell.sidebar.style", &shell.sidebar.style, &["classic", "custom"][..]), ("shell.sidebar.item_shape", &shell.sidebar.item_shape, &["rounded", "pill"]), ("shell.sidebar.item_style", &shell.sidebar.item_style, &["list", "rail"]), ("shell.sidebar.playlist_art", &shell.sidebar.playlist_art, &["none", "square", "round"]), ("shell.bottom_bar.style", &shell.bottom_bar.style, &["classic", "parts"]), ("shell.bottom_bar.show", &shell.bottom_bar.show, &["always", "except-now", "never"]), ("shell.now_playing.host", &shell.now_playing.host, &["fullscreen", "page"]), ("shell.sidebar.position", &shell.sidebar.position, &["left", "right"]), ("shell.sidebar.collapse", &shell.sidebar.collapse, &["auto", "always", "never"]), ("shell.bottom_bar.position", &shell.bottom_bar.position, &["bottom", "top"]), ("shell.panel_side", &shell.panel_side, &["right", "left"])] {
         if !ok.contains(&v.as_str()) { out.push(format!("{what}: `{v}` is not one of {}", ok.join(" | "))); }
     }
     out

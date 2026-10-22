@@ -158,7 +158,8 @@ fn validate_themes(specs: &[String]) -> glib::ExitCode {
                     let light = t.light();
                     let mut notes = t.clone().lint();
                     // The other scheme as well: that is what a user in the opposite mode sees.
-                    notes.extend(t.resolved(!light).lint().into_iter().map(|n| format!("(other scheme) {n}")));
+                    notes.extend(t.clone().resolved(!light).lint().into_iter().map(|n| format!("(other scheme) {n}")));
+                    notes.extend(t.lint_seeds());
                     if notes.is_empty() { println!("✓ {label}"); } else { println!("✓ {label} — {} warning(s)", notes.len()); for n in notes { println!("    ! {n}"); } }
                 }
                 Err(e) => { println!("✗ {label}: {e}"); failed = true; }

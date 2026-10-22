@@ -33,6 +33,12 @@ toast_bg,toast_fg,np_fg,np_on}`, radii `shape.{xs,sm,md,lg,input,xl,control,cove
 Pages without a theme layout use the built-in composition, which is how classic stays unchanged. libadwaita applies only ONE matching
 breakpoint at a time (window.rs counts applied breakpoints). Theme-specific CSS is raw (no `{{tokens}}`); area CSS files under
 `components/*.css` are templated; never put a literal double-brace or a nested comment marker inside a CSS comment.
+**Since then (token layer):** `docs/THEME_REFERENCE.md` is the user-facing reference. Added: `derive = true` palettes, `[variants]`, templated theme CSS with `[vars]`,
+`[material]` (Material 3 palette generator, `crates/theme-core/src/material.rs`, regenerated per cover through `Ctx::apply_accent`), the surface ramp,
+`{{st:}}` / `{{fs:}}` / `{{fw:}}` / `{{type:}}` / `{{ease:}}` / `{{shadow:}}` / `{{ms:}}` template functions, per-component and pressed shapes, `item_style = "rail"`,
+`seek style = "wavy"` (`widgets/seek-widgets/src/wavy.rs`), `play = "rounded"` and `group = "connected"`. The app CSS was converted to these functions with
+`[shell] panel_side`, `sidebar.position` / `collapse`, `bottom_bar.position`, `[page.home]` / `[page.artist]` with `heading` / `shelf` / `shelves` (`PageData::Home`, `DetailData.shelves`), cover-driven Material colours kept in the stored theme (`Theme::reseeded`), defaults that reproduce Blur exactly (check with `HARV_DUMP_CSS=<path>`, which writes the final stylesheet, and diff before/after).
+
 ## Decisions already made
 
 - **No level meters** (Mixer's output meters). mpv has no cheap level output; skipped entirely.

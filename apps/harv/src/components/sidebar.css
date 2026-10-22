@@ -1,1 +1,14 @@
 /* sidebar components — token-driven rules (templated: double-brace tokens and @colors). */
+
+/* Navigation rail (shell.sidebar item_style = rail): label under the icon, a pill indicator behind the icon. */
+.sidebar.rail { padding: 12px 6px; }
+.nav-row.rail, .nav-row.rail:hover, .nav-row.rail:selected { background: none; background-image: none; padding: 4px 0 6px 0; margin: 2px 0; }
+.nav-row.rail .rail-indicator { min-width: 56px; min-height: 32px; border-radius: 16px; transition: background {{ms:200}} {{ease:spatial}}; }
+.nav-row.rail:hover .rail-indicator { background: alpha(@fg, {{st:0.08}}); }
+.nav-row.rail:selected .rail-indicator { background: @selected; }
+.nav-row.rail:selected image { color: @fg; }
+.nav-row.rail .rail-label { font-size: {{fs:12}}; font-weight: {{fw:500}}; letter-spacing: 0.5px; }
+.nav-row.rail:selected .rail-label { color: @fg; font-weight: {{fw:700}}; }
+.nav-prefs.rail { padding: 4px 0 6px 0; }
+.nav-prefs.rail:hover { background: none; }
+.nav-prefs.rail:hover .rail-indicator { background: alpha(@fg, {{st:0.08}}); }

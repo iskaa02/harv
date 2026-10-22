@@ -10,7 +10,7 @@ use crate::rows::{art, fmt_time, set_art};
 use adw::prelude::*;
 use gtk::{glib, pango};
 use player_core::{Command, Repeat, Snapshot, Status};
-use seek_widgets::{pseudo_peaks, Waveform};
+use seek_widgets::{pseudo_peaks, Wavy, Waveform};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
@@ -152,15 +152,18 @@ fn title(env: &Env, n: &Node) -> gtk::Widget {
 }
 
 // ── transport ────────────────────────────────────────────────────────────────────────────────
-/// `buttons` in order (`shuffle prev play next repeat heart`); `play` = `circle` | `pill`; `play_size`, `size` in px.
+/// `buttons` in order (`shuffle prev play next repeat heart`); `play` = `circle` | `pill` | `rounded`; `group = "connected"` joins the buttons into one segmented group (`.btn-group`); `play_size`, `size` in px.
 fn transport(env: &Env, n: &Node) -> gtk::Widget {
     let ctx = env.ctx;
     let mut names = n.strs("buttons");
     if names.is_empty() { names = ["shuffle", "prev", "play", "next", "repeat", "radio"].map(String::from).to_vec(); }
     let size = n.int_or("size", 32).max(8) as i32;
     let play_size = n.int_or("play_size", 40).max(8) as i32;
-    let pill = n.str_or("play", "circle") == "pill";
-    let row = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+    // `play` = `circle` | `pill` | `rounded` (a rounded square, radius `shape.component.play`, for FAB-style buttons).
+    let play_shape = n.str_or("play", "circle");
+    let pill = play_shape == "pill";
+    let connected = n.str_or("group", "") == "connected";
+    let row = gtk::Box::new(gtk::Orientation::Horizontal, if connected { 2 } else { 4 });
     row.set_valign(gtk::Align::Center);
     row.add_css_class("bar-transport");
 
@@ -175,15 +178,17 @@ fn transport(env: &Env, n: &Node) -> gtk::Widget {
             "heart" => icon_btn(crate::icons::HEART_OFF, "Like", size),
             "play" => {
                 let w = if pill { (play_size as f32 * 1.7) as i32 } else { play_size };
-                let b = gtk::Button::builder().icon_name("media-playback-start-symbolic").tooltip_text("Play / pause (Space)").css_classes(["bar-play", if pill { "pill" } else { "circle" }]).valign(gtk::Align::Center).build();
+                let b = gtk::Button::builder().icon_name("media-playback-start-symbolic").tooltip_text("Play / pause (Space)").css_classes(["bar-play", match play_shape { "pill" => "pill", "rounded" => "rounded", _ => "circle" }]).valign(gtk::Align::Center).build();
                 b.set_size_request(w, play_size);
                 b
             }
             other => { eprintln!("theme: transport button `{other}` is unknown"); continue; }
         };
+        if connected { b.add_css_class("grouped"); }
         row.append(&b);
         btns.push((name.clone(), b));
     }
+    if connected { row.add_css_class("btn-group"); }
     let find = |k: &str| btns.iter().find(|(n, _)| n == k).map(|(_, b)| b.clone());
     if let Some(b) = find("shuffle") { let c = ctx.clone(); b.connect_clicked(move |_| { let on = c.snap.borrow().as_ref().is_some_and(|s| s.shuffle); c.engine.send(Command::SetShuffle(!on)); }); }
     if let Some(b) = find("prev") { let c = ctx.clone(); b.connect_clicked(move |_| c.engine.send(Command::Prev)); }
@@ -222,7 +227,8 @@ fn transport(env: &Env, n: &Node) -> gtk::Widget {
 fn set_on(b: &gtk::Button, on: bool) { if on { b.add_css_class("on"); } else { b.remove_css_class("on"); } }
 
 // ── seek ─────────────────────────────────────────────────────────────────────────────────────
-/// `style` = `bar` (6 px rounded, Mixer) | `thin` (3 px, Lagoon / Tape Deck) | `waveform` (pseudo-waveform,
+/// `style` = `bar` (6 px rounded, Mixer) | `thin` (3 px, Lagoon / Tape Deck) | `wavy` (Material 3 Expressive wave: `wave_amp`,
+/// `wave_len`, `wave_stroke`, `wave_height` px; it moves only while playing) | `waveform` (pseudo-waveform,
 /// `bar_width` / `bar_gap` / `wave_height` px). `times` = elapsed on the left, remaining on the right, mono.
 fn seek(env: &Env, n: &Node) -> gtk::Widget {
     let ctx = env.ctx;
@@ -235,7 +241,7 @@ fn seek(env: &Env, n: &Node) -> gtk::Widget {
     let (el, rem) = (gtk::Label::builder().label("0:00").width_chars(5).xalign(1.0).css_classes(["bar-time"]).build(), gtk::Label::builder().label("--:--").width_chars(6).xalign(0.0).css_classes(["bar-time"]).build());
     if times { row.append(&el); }
 
-    let scale: Option<gtk::Scale> = (style != "waveform").then(|| {
+    let scale: Option<gtk::Scale> = (style != "waveform" && style != "wavy").then(|| {
         let s = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 1.0, 0.001);
         s.set_draw_value(false);
         s.set_focusable(false);
@@ -257,15 +263,24 @@ fn seek(env: &Env, n: &Node) -> gtk::Widget {
         { let ctx = ctx.clone(); w.connect_seek(move |f| { let d = ctx.engine.clock().duration(); if d > 0.0 { ctx.engine.send(Command::Seek(f.clamp(0.0, 1.0) * d)); } }); }
         w
     });
-    match (&scale, &wave) {
-        (Some(s), _) => row.append(s),
-        (_, Some(w)) => row.append(w),
+    let wavy: Option<Wavy> = (style == "wavy").then(|| {
+        let w = Wavy::new();
+        w.set_shape(n.float_or("wave_amp", 3.0) as f32, n.float_or("wave_len", 30.0) as f32, n.float_or("wave_stroke", 4.0) as f32, n.int_or("wave_height", 28) as i32);
+        w.set_valign(gtk::Align::Center);
+        w.add_css_class("bar-wavy");
+        { let ctx = ctx.clone(); w.connect_seek(move |f| { let d = ctx.engine.clock().duration(); if d > 0.0 { ctx.engine.send(Command::Seek(f.clamp(0.0, 1.0) * d)); } }); }
+        w
+    });
+    match (&scale, &wave, &wavy) {
+        (Some(s), _, _) => row.append(s),
+        (_, Some(w), _) => row.append(w),
+        (_, _, Some(w)) => row.append(w),
         _ => {}
     }
     if times { row.append(&rem); }
 
     let tick: Rc<dyn Fn()> = {
-        let (ctx, scale, wave, el, rem, row_w) = (ctx.clone(), scale.clone(), wave.clone(), el.clone(), rem.clone(), row.downgrade());
+        let (ctx, scale, wave, wavy, el, rem, row_w) = (ctx.clone(), scale.clone(), wave.clone(), wavy.clone(), el.clone(), rem.clone(), row.downgrade());
         Rc::new(move || {
             let loading = ctx.is_loading();
             let (p, d) = if loading { (0.0, 0.0) } else { clock(&ctx) };
@@ -273,6 +288,7 @@ fn seek(env: &Env, n: &Node) -> gtk::Widget {
             let frac = if d > 0.0 { (p / d).min(1.0) } else { 0.0 };
             if let Some(s) = &scale { if !s.state_flags().contains(gtk::StateFlags::ACTIVE) { s.set_value(frac); } }
             if let Some(w) = &wave { w.set_progress(frac); }
+            if let Some(w) = &wavy { w.set_progress(frac); }
             if times {
                 el.set_label(&fmt_time(p as u32));
                 rem.set_label(&if d > 0.0 { format!("-{}", fmt_time((d - p).max(0.0) as u32)) } else { "--:--".to_string() });
@@ -281,8 +297,9 @@ fn seek(env: &Env, n: &Node) -> gtk::Widget {
     };
     let peaks: Rc<RefCell<(String, Vec<f32>)>> = Rc::default();
     wire(ctx, &row, {
-        let wave = wave.clone();
+        let (wave, wavy) = (wave.clone(), wavy.clone());
         move |s| {
+            if let Some(w) = &wavy { w.set_playing(s.status == Status::Playing); }
             let Some(w) = &wave else { return };
             let Some(t) = current(s) else { return };
             if peaks.borrow().0 != t.video_id {

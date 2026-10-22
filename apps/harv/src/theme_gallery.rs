@@ -64,7 +64,8 @@ pub fn fill(holder: &gtk::Box, ctx: &Rc<Ctx>, dialog: &adw::Dialog) {
     let flow = gtk::FlowBox::builder().selection_mode(gtk::SelectionMode::None).homogeneous(true).min_children_per_line(1).max_children_per_line(3).row_spacing(10).column_spacing(10).build();
     for e in skin.list() {
         match skin.load(&e.id) {
-            Ok(t) => flow.append(&card(ctx, holder, dialog, &e, Rc::new(t), e.id == current, &fonts)),
+            // Material themes that follow the artwork show the scheme the playing cover would give them.
+            Ok(t) => { let t = match ctx.material_seed(&t) { Some(seed) => t.reseeded(seed), None => t }; flow.append(&card(ctx, holder, dialog, &e, Rc::new(t), e.id == current, &fonts)) }
             Err(err) => eprintln!("theme {}: {err}", e.id),
         }
     }

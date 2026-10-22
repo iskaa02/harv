@@ -4,10 +4,12 @@
 
 mod color;
 mod derive;
+pub mod material;
 pub mod fonts;
 pub mod layout;
 
 pub use color::Color;
+pub use material::{Flavor, MaterialCfg};
 pub use layout::{Node, Page, Shell};
 use serde::{Deserialize, Deserializer};
 use std::collections::BTreeMap;
@@ -25,7 +27,7 @@ pub const BUILTIN: &[(&str, &str, &str)] = &[
 pub const DEFAULT: &str = "blur";
 
 /// Old theme ids (saved preferences, user themes that `extends` them) and what they were renamed to.
-const RENAMED: &[(&str, &str)] = &[("classic", "blur"), ("mixer", "harv"), ("rawi", "harv"), ("night-console", "blur"), ("lagoon", "blur")];
+const RENAMED: &[(&str, &str)] = &[("classic", "blur"), ("mixer", "harv"), ("rawi", "harv"), ("night-console", "blur"), ("lagoon", "blur"), ("shell-amber", "shell")];
 fn current_id(id: &str) -> &str { RENAMED.iter().find(|(old, _)| *old == id).map_or(id, |(_, new)| new) }
 
 #[derive(Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
@@ -85,15 +87,34 @@ pub struct Colors {
     #[serde(default)] pub danger: Option<Color>,
     #[serde(default)] pub success: Option<Color>,
     #[serde(default)] pub warn: Option<Color>,
+    /// Surface ramp, lowest to highest (`@surface_1` … `@surface_5`); derived when absent. Material themes map the M3 containers here.
+    #[serde(default)] pub surface_1: Option<Color>,
+    #[serde(default)] pub surface_2: Option<Color>,
+    #[serde(default)] pub surface_3: Option<Color>,
+    #[serde(default)] pub surface_4: Option<Color>,
+    #[serde(default)] pub surface_5: Option<Color>,
 }
 
 impl Colors {
+    /// Set a token by its TOML key (used when regenerating a Material palette from a new seed).
+    fn set(&mut self, key: &str, c: Color) {
+        match key {
+            "bg" => self.bg = c, "sidebar" => self.sidebar = c, "raise" => self.raise = c, "hover" => self.hover = c, "fg" => self.fg = c, "dim" => self.dim = c,
+            "accent" => self.accent = Accent::Fixed(c), "accent_on" => self.accent_on = c, "play_bg" => self.play_bg = c, "play_fg" => self.play_fg = c,
+            "bar_bg" => self.bar_bg = c, "bar_fg" => self.bar_fg = c, "toast_bg" => self.toast_bg = c, "toast_fg" => self.toast_fg = c, "np_fg" => self.np_fg = c, "np_on" => self.np_on = c,
+            "line" => self.line = Some(c), "selected" => self.selected = Some(c), "focus" => self.focus = Some(c), "scrim" => self.scrim = Some(c), "danger" => self.danger = Some(c),
+            "surface_1" => self.surface_1 = Some(c), "surface_2" => self.surface_2 = Some(c), "surface_3" => self.surface_3 = Some(c), "surface_4" => self.surface_4 = Some(c), "surface_5" => self.surface_5 = Some(c),
+            _ => {}
+        }
+    }
+
     /// The extra tokens with their derived defaults: borders, selection, focus ring, modal scrim and status colours.
-    pub fn extras(&self) -> [(&'static str, Color); 7] {
+    pub fn extras(&self) -> Vec<(&'static str, Color)> {
         let dark = self.bg.luma() < 0.18;
         let hex = |s: &str| Color::parse(s).unwrap();
         let accent = match self.accent { Accent::Fixed(a) => a, Accent::Cover => self.fg };
-        [
+        let ramp = |own: Option<Color>, k: f32| own.unwrap_or_else(|| self.bg.mix(&self.fg, k));
+        vec![
             ("line", self.line.unwrap_or_else(|| self.bg.mix(&self.fg, 0.12))),
             ("selected", self.selected.unwrap_or_else(|| self.bg.mix(&self.fg, 0.16))),
             ("focus", self.focus.unwrap_or(accent)),
@@ -101,6 +122,11 @@ impl Colors {
             ("danger", self.danger.unwrap_or_else(|| hex(if dark { "#ff6b6b" } else { "#d93636" }))),
             ("success", self.success.unwrap_or_else(|| hex(if dark { "#4cd98a" } else { "#1f9d55" }))),
             ("warn", self.warn.unwrap_or_else(|| hex(if dark { "#f5b94a" } else { "#b7791f" }))),
+            ("surface_1", ramp(self.surface_1, 0.0)),
+            ("surface_2", ramp(self.surface_2, 0.03)),
+            ("surface_3", ramp(self.surface_3, 0.06)),
+            ("surface_4", ramp(self.surface_4, 0.09)),
+            ("surface_5", ramp(self.surface_5, 0.12)),
         ]
     }
 }
@@ -116,7 +142,19 @@ pub struct Fonts {
 /// Corner radii in px. `control` is the radius of chips / pill buttons / toasts (999 = pill).
 #[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct Shape { pub xs: u32, pub sm: u32, pub md: u32, pub lg: u32, pub input: u32, pub xl: u32, pub control: u32, pub cover: u32, pub hero: u32 }
+pub struct Shape {
+    pub xs: u32, pub sm: u32, pub md: u32, pub lg: u32, pub input: u32, pub xl: u32, pub control: u32, pub cover: u32, pub hero: u32,
+    /// `[shape.component]`: per-component radii; each falls back to the general step noted on [`ShapeParts`].
+    #[serde(default)] pub component: ShapeParts,
+    /// `[shape.pressed]`: the radius while pressed (M3 Expressive shape morph); absent = no change.
+    #[serde(default)] pub pressed: ShapeParts,
+}
+
+/// Radii for the components that can have their own shape. Fallbacks: `button` → `control`, `card` → `xl`, `play` → 999 (round),
+/// `chip` → `control`, `search` → `input`, `nav` → `md`.
+#[derive(Deserialize, Clone, Debug, Default)]
+#[serde(deny_unknown_fields, default)]
+pub struct ShapeParts { pub button: Option<u32>, pub card: Option<u32>, pub play: Option<u32>, pub chip: Option<u32>, pub search: Option<u32>, pub nav: Option<u32> }
 
 #[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
@@ -140,6 +178,8 @@ pub struct Effects {
     #[serde(default = "one_f64")] pub shadow: f64,
     /// Multiplier on transition / animation speed (0 = instant, 1 = Blur's, 2 = twice as slow).
     #[serde(default = "one_f64")] pub motion: f64,
+    /// Multiplier on hover / press / selected overlay strength (`{{st:0.08}}` in CSS); 1 = Blur's.
+    #[serde(default = "one_f64")] pub state: f64,
 }
 
 /// `[lyrics]`: the full-screen lyrics page (`shell.now_playing.host = "fullscreen"`). Every key is optional; the defaults are
@@ -188,6 +228,68 @@ impl LyricsTheme {
     }
 }
 
+/// One typographic role (`[type.title_large]`); every key optional over the built-in M3-style default of that role.
+#[derive(Deserialize, Clone, Debug, Default)]
+#[serde(deny_unknown_fields)]
+pub struct RoleOverride { pub size: Option<f32>, pub weight: Option<u32>, pub tracking: Option<f32>, /// Variable-font width axis (`wdth`), percent.
+    pub width: Option<f32>, /// Raw `font-variation-settings`, e.g. `"ROND" 100`.
+    pub axes: Option<String> }
+
+/// `[type]`: `scale` multiplies every font size the app CSS sets, `weight_shift` is added to every font weight, and the
+/// `[type.<role>]` tables define roles for `{{type:<role>}}` in theme CSS.
+#[derive(Deserialize, Clone, Debug)]
+#[serde(default)]
+pub struct TypeScale {
+    pub scale: f32,
+    pub weight_shift: i32,
+    #[serde(flatten)] pub roles: BTreeMap<String, RoleOverride>,
+}
+
+impl Default for TypeScale { fn default() -> Self { Self { scale: 1.0, weight_shift: 0, roles: BTreeMap::new() } } }
+
+/// (role, size px, weight, tracking px): the M3 type scale.
+const ROLES: &[(&str, f32, u32, f32)] = &[
+    ("display_large", 57.0, 400, -0.25), ("display_medium", 45.0, 400, 0.0), ("display_small", 36.0, 400, 0.0),
+    ("headline_large", 32.0, 400, 0.0), ("headline_medium", 28.0, 400, 0.0), ("headline_small", 24.0, 400, 0.0),
+    ("title_large", 22.0, 400, 0.0), ("title_medium", 16.0, 500, 0.15), ("title_small", 14.0, 500, 0.1),
+    ("body_large", 16.0, 400, 0.5), ("body_medium", 14.0, 400, 0.25), ("body_small", 12.0, 400, 0.4),
+    ("label_large", 14.0, 500, 0.1), ("label_medium", 12.0, 500, 0.5), ("label_small", 11.0, 500, 0.5),
+];
+
+impl TypeScale {
+    /// CSS declarations for a role (`font-size`, `font-weight`, `letter-spacing`, optional variation settings).
+    fn role_css(&self, name: &str) -> Option<String> {
+        let base = ROLES.iter().find(|r| r.0 == name);
+        let over = self.roles.get(name);
+        if base.is_none() && over.is_none() { return None; }
+        let (bs, bw, bt) = base.map_or((14.0, 400, 0.0), |r| (r.1, r.2, r.3));
+        let o = over.cloned().unwrap_or_default();
+        let mut css = format!("font-size: {}px; font-weight: {}; letter-spacing: {}px;", num((o.size.unwrap_or(bs) * self.scale) as f64, 2), (o.weight.unwrap_or(bw) as i32 + self.weight_shift).clamp(1, 1000), num(o.tracking.unwrap_or(bt) as f64, 2));
+        match (&o.axes, o.width) {
+            (Some(a), _) => css += &format!(" font-variation-settings: {a};"),
+            (None, Some(w)) => css += &format!(" font-variation-settings: \"wdth\" {};", num(w as f64, 1)),
+            _ => {}
+        }
+        Some(css)
+    }
+}
+
+/// `[motion]`: easing curves by name (`{{ease:spatial}}` in CSS). Only the names you set change; the rest keep their defaults.
+#[derive(Deserialize, Clone, Debug, Default)]
+pub struct Motion { #[serde(flatten)] pub easing: BTreeMap<String, String> }
+
+/// Built-in easing names. `ease`..`pop` are the curves harv's CSS used before they were tokens; the rest are for new CSS.
+const EASINGS: &[(&str, &str)] = &[
+    ("ease", "ease"), ("ease_in_out", "ease-in-out"), ("ease_out", "ease-out"), ("ease_in", "ease-in"), ("pop", "cubic-bezier(0.23, 1, 0.32, 1)"),
+    ("standard", "cubic-bezier(0.2, 0, 0, 1)"), ("emphasized", "cubic-bezier(0.3, 0, 0, 1)"), ("spatial", "cubic-bezier(0.38, 1.21, 0.22, 1)"), ("effects", "cubic-bezier(0.34, 0.8, 0.34, 1)"), ("bounce", "cubic-bezier(0.34, 1.56, 0.64, 1)"),
+];
+
+impl Motion {
+    fn curve(&self, name: &str) -> Option<String> {
+        self.easing.get(name).cloned().or_else(|| EASINGS.iter().find(|(n, _)| *n == name).map(|(_, v)| v.to_string()))
+    }
+}
+
 /// `[variants.<id>]`: an alternative palette of the same theme (Latte / Mocha…). Its `colors` overlay the theme's, and the
 /// missing colours are derived from its `bg` / `fg`; `colors_alt` is generated unless given.
 #[derive(Deserialize, Clone, Debug, Default)]
@@ -198,6 +300,8 @@ pub struct Variant {
     pub scheme: Option<Scheme>,
     pub colors: toml::Table,
     pub colors_alt: toml::Table,
+    /// Regenerate the palette from another seed / flavour (merged over the theme's `[material]`).
+    pub material: Option<toml::Table>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -212,6 +316,14 @@ pub struct Theme {
     pub shape: Shape,
     pub metrics: Metrics,
     pub effects: Effects,
+    /// Generate the palette from a seed colour (Material 3); see [`material`].
+    #[serde(default)]
+    pub material: Option<MaterialCfg>,
+    /// Font sizes / weights and the named roles.
+    #[serde(default, rename = "type")]
+    pub type_scale: TypeScale,
+    #[serde(default)]
+    pub motion: Motion,
     /// Your own tokens: usable as `{{name}}` in the theme's `style.css`.
     #[serde(default)]
     pub vars: BTreeMap<String, toml::Value>,
@@ -273,7 +385,9 @@ impl Theme {
         }
         for (name, col) in c.extras() { s += &format!("@define-color {name} {};\n", col.css()); }
         let accent = match c.accent { Accent::Fixed(a) => a.css(), Accent::Cover => "#ff375f".into() };
-        s + &format!("@define-color lib_accent {accent};\n")
+        s += &format!("@define-color lib_accent {accent};\n");
+        for (name, col) in self.material_roles() { s += &format!("@define-color m3_{name} {};\n", col.css()); }
+        s
     }
 
     /// Numeric/text tokens usable as `{{name}}` in the stylesheet template.
@@ -296,8 +410,84 @@ impl Theme {
         for (k, col) in [("bg", c.bg), ("sidebar", c.sidebar), ("raise", c.raise), ("hover", c.hover), ("fg", c.fg), ("dim", c.dim), ("accent_on", c.accent_on), ("play_bg", c.play_bg), ("play_fg", c.play_fg), ("bar_bg", c.bar_bg), ("bar_fg", c.bar_fg), ("toast_bg", c.toast_bg), ("toast_fg", c.toast_fg), ("np_fg", c.np_fg), ("np_on", c.np_on)] { t.insert(format!("c_{k}"), col.css()); }
         for (k, col) in c.extras() { t.insert(format!("c_{k}"), col.css()); }
         if let Accent::Fixed(a) = c.accent { t.insert("c_accent".into(), a.css()); }
+        for (k, col) in self.material_roles() { t.insert(format!("c_m3_{k}"), col.css()); }
+        let sh = &self.shape;
+        t.insert("r_btn".into(), sh.component.button.unwrap_or(sh.control).to_string());
+        t.insert("r_card".into(), sh.component.card.unwrap_or(sh.xl).to_string());
+        t.insert("r_play".into(), sh.component.play.unwrap_or(999).to_string());
+        t.insert("r_chip".into(), sh.component.chip.unwrap_or(sh.control).to_string());
+        t.insert("r_search".into(), sh.component.search.unwrap_or(sh.input).to_string());
+        t.insert("r_nav".into(), sh.component.nav.unwrap_or(sh.md).to_string());
         for (k, v) in &self.vars { t.insert(k.clone(), var_text(v)); }
         t
+    }
+
+    /// The M3 roles of a `[material]` theme for its current palette (empty without `[material]`): the static scheme from the
+    /// seed (the fallback seed while following the cover). Themes extending a Material theme get them too.
+    pub fn material_roles(&self) -> Vec<(&'static str, Color)> {
+        let Some(cfg) = &self.material else { return vec![] };
+        let Ok(seed) = cfg.seed_color() else { return vec![] };
+        material::generate(seed, cfg.variant, !self.light()).0
+    }
+
+    /// A `[material]` theme with its colours regenerated from `seed` (the cover colour, or the user's accent): what the stylesheet
+    /// shows once the artwork is known. The accent becomes the generated primary. Other themes come back unchanged.
+    pub fn reseeded(&self, seed: Color) -> Theme {
+        let Some(cfg) = &self.material else { return self.clone() };
+        let mut t = self.clone();
+        for (k, c) in material::token_colors(&material::generate(seed, cfg.variant, !self.light())) { t.colors.set(k, c); }
+        t
+    }
+
+    /// For `seed = "cover"` themes: readability warnings across twelve sample seed hues in both schemes (the static [`Theme::lint`]
+    /// only sees the fallback seed). Each distinct problem is listed once with the first hue it appears at.
+    pub fn lint_seeds(&self) -> Vec<String> {
+        let Some(cfg) = &self.material else { return vec![] };
+        if !cfg.follows_cover() { return vec![]; }
+        let mut seen: Vec<String> = vec![];
+        let mut out = vec![];
+        for light in [self.light(), !self.light()] {
+            let base = self.clone().resolved(light);
+            for hue in (0..360).step_by(30) {
+                for w in base.reseeded(Color::from_oklch(0.62, 0.16, hue as f32)).lint() {
+                    let key = format!("{} {}", if light { "light" } else { "dark" }, w.split(':').next().unwrap_or(&w));
+                    if !seen.contains(&key) { seen.push(key.clone()); out.push(format!("(cover seed hue {hue}, {}) {w}", if light { "light" } else { "dark" })); }
+                }
+            }
+        }
+        out
+    }
+
+    /// With `[material] seed = "cover"` (or a user-picked accent): every colour token regenerated from `seed`, as `@define-color`
+    /// lines for the accent provider. None for themes without `[material]` or with a fixed seed and no override.
+    pub fn material_css(&self, seed: Color) -> Option<String> {
+        let cfg = self.material.as_ref()?;
+        let roles = material::generate(seed, cfg.variant, !self.light());
+        let mut s = String::new();
+        for (key, col) in material::token_colors(&roles) { s += &format!("@define-color {} {};\n", material::css_name(key), col.css()); }
+        for (name, col) in &roles.0 { s += &format!("@define-color m3_{name} {};\n", col.css()); }
+        Some(s)
+    }
+
+    /// Pressed-state shapes (`[shape.pressed]`): the radius morph on press, with the radius transition. Empty when unset.
+    /// (The transitions repeat what the app CSS sets for these selectors, plus `border-radius`.)
+    pub fn shape_css(&self) -> String {
+        let p = &self.shape.pressed;
+        let mut s = String::new();
+        let ease = self.motion.curve("spatial").unwrap_or_default();
+        let ms = |n: f64| format!("{}ms", num(n * self.effects.motion, 0));
+        for (sel_base, sel_active, radius, rest) in [
+            (".chip", ".chip:active", p.chip, "background 150ms ease, box-shadow 150ms ease"),
+            ("button.pill, .pill-btn", "button.pill:active, .pill-btn:active", p.button, ""),
+            (".play-btn, .bar-play", ".play-btn:active, .bar-play:active", p.play, "transform 120ms ease, background 150ms ease"),
+            (".card-btn", ".card-btn:active", p.card, "background 200ms ease"),
+            (".nav-row", ".nav-row:active", p.nav, "background 150ms ease, color 150ms ease"),
+        ] {
+            let Some(r) = radius else { continue };
+            let existing: String = rest.split(", ").filter(|x| !x.is_empty()).map(|x| { let (prop, tail) = x.split_once(' ').unwrap(); let (d, e) = tail.split_once("ms ").unwrap(); format!("{prop} {} {}, ", ms(d.parse().unwrap_or(150.0)), self.motion.curve(&e.replace('-', "_")).unwrap_or_else(|| e.to_string())) }).collect();
+            s += &format!("{sel_base} {{ transition: {existing}border-radius {} {ease}; }}\n{sel_active} {{ border-radius: {r}px; }}\n", ms(140.0));
+        }
+        s
     }
 
     /// Substitute `{{token}}` in `template`; an unknown token is an error naming its line.
@@ -316,6 +506,11 @@ impl Theme {
                 // `{{shadow:0.35}}` = that shadow alpha scaled by `effects.shadow`; `{{ms:150}}` = that duration scaled by `effects.motion`.
                 Some(("shadow", n)) => out += &num(n.trim().parse::<f64>().map_err(|_| format!("style template line {line}: bad number in `{key}`"))? * self.effects.shadow, 3),
                 Some(("ms", n)) => out += &format!("{}ms", num(n.trim().parse::<f64>().map_err(|_| format!("style template line {line}: bad number in `{key}`"))? * self.effects.motion, 0)),
+                Some(("st", n)) => out += &num(n.trim().parse::<f64>().map_err(|_| format!("style template line {line}: bad number in `{key}`"))? * self.effects.state, 3),
+                Some(("fs", n)) => out += &format!("{}px", num(n.trim().parse::<f64>().map_err(|_| format!("style template line {line}: bad number in `{key}`"))? * self.type_scale.scale as f64, 2)),
+                Some(("fw", n)) => out += &(n.trim().parse::<i32>().map_err(|_| format!("style template line {line}: bad number in `{key}`"))? + self.type_scale.weight_shift).clamp(1, 1000).to_string(),
+                Some(("ease", n)) => out += &self.motion.curve(n.trim()).ok_or_else(|| format!("style template line {line}: unknown easing `{}`", n.trim()))?,
+                Some(("type", n)) => out += &self.type_scale.role_css(n.trim()).ok_or_else(|| format!("style template line {line}: unknown type role `{}`", n.trim()))?,
                 _ => out.push_str(tokens.get(key).ok_or_else(|| format!("style template line {line}: unknown token `{key}`"))?),
             }
             rest = &tail[end + 2..];
@@ -328,7 +523,7 @@ impl Theme {
     /// so a note like "no {{tokens}} here" in an older theme can't trip it).
     pub fn stylesheet(&self, template: &str) -> Result<String> {
         let own = self.render(&strip_css_comments(&self.css)).map_err(|e| format!("theme `{}` style.css: {e}", self.meta.id))?;
-        Ok(format!("{}{}\n{}", self.prelude(), self.render(template)?, own))
+        Ok(format!("{}{}\n{}\n{}", self.prelude(), self.render(template)?, self.shape_css(), own))
     }
 
     /// Readability warnings (not errors): text/background pairs below WCAG contrast.
@@ -337,7 +532,7 @@ impl Theme {
         let accent = match c.accent { Accent::Fixed(a) => Some(a), Accent::Cover => None };
         let mut pairs = vec![("fg on bg", c.fg, c.bg, 4.5), ("fg on sidebar", c.fg, c.sidebar, 4.5), ("fg on raise", c.fg, c.raise, 4.5), ("dim on bg", c.dim, c.bg, 3.0), ("bar_fg on bar_bg", c.bar_fg, c.bar_bg, 4.5), ("toast_fg on toast_bg", c.toast_fg, c.toast_bg, 4.5), ("play_fg on play_bg", c.play_fg, c.play_bg, 3.0), ("np_on on np_fg", c.np_on, c.np_fg, 3.0)];
         if let Some(a) = accent { pairs.push(("accent_on on accent", c.accent_on, a, 3.0)); pairs.push(("accent on bg", a, c.bg, 3.0)); }
-        let mut out: Vec<String> = pairs.into_iter().filter(|(_, a, b, min)| a.contrast(b) < *min).map(|(what, a, b, min)| format!("low contrast {what}: {:.1}:1 (aim for {min}:1)", a.contrast(&b))).collect();
+        let out: Vec<String> = pairs.into_iter().filter(|(_, a, b, min)| a.contrast(b) < *min).map(|(what, a, b, min)| format!("low contrast {what}: {:.1}:1 (aim for {min}:1)", a.contrast(&b))).collect();
         out
     }
 }
@@ -395,6 +590,10 @@ impl Loader {
         }
         let mut theme: Theme = table.try_into().map_err(|e| format!("theme `{id}`: {e}"))?;
         let mut problems = layout::validate(&theme.shell, &theme.page);
+        if let Some(m) = &theme.material { if let Err(e) = m.seed_color() { problems.push(format!("material.seed: {e}")); } }
+        for (k, v) in &theme.motion.easing {
+            if !v.chars().all(|c| c.is_ascii_alphanumeric() || " .,()-".contains(c)) { problems.push(format!("motion.{k}: not a CSS easing")); }
+        }
         let reserved = { let mut t = theme.clone(); t.vars.clear(); t.tokens() };
         for k in theme.vars.keys() {
             if !k.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') || k.is_empty() { problems.push(format!("vars.{k}: names are letters, digits and `_`")); }
@@ -442,6 +641,7 @@ impl Loader {
             None => BUILTIN.iter().find(|(b, _, _)| *b == id).map(|(_, t, c)| (t.to_string(), c.to_string())).ok_or_else(|| format!("unknown theme `{id}`"))?,
         };
         let mut table: toml::Table = text.parse().map_err(|e| format!("theme `{id}`: {e}"))?;
+        material::apply(&mut table);
         derive::apply(&mut table);
         let parent = table.get("meta").and_then(|m| m.get("extends")).and_then(|v| v.as_str()).map(str::to_string);
         match parent {
@@ -472,6 +672,21 @@ pub fn user_theme_dir() -> PathBuf {
 
 /// Overlay a `[variants.<id>]` table onto the merged theme table (see [`Variant`]).
 fn apply_variant(table: &mut toml::Table, vt: &toml::Table) {
+    // A variant may regenerate the Material palette from another seed / flavour; its own colours then overlay that.
+    if let Some(toml::Value::Table(vm)) = vt.get("material") {
+        let mut cfg = match table.get("material") { Some(toml::Value::Table(t)) => t.clone(), _ => toml::Table::new() };
+        cfg.extend(vm.clone());
+        table.insert("material".into(), toml::Value::Table(cfg.clone()));
+        let dark = match vt.get("scheme").and_then(|v| v.as_str()) { Some(s) => s != "light", None => table.get("meta").and_then(|m| m.get("scheme")).and_then(|v| v.as_str()) != Some("light") };
+        if let Some((c, a)) = toml::Value::Table(cfg).try_into::<MaterialCfg>().ok().and_then(|cfg| material::palettes_for(&cfg, dark)) {
+            for (key, part) in [("colors", c), ("colors_alt", a)] {
+                let mut base = match table.remove(key) { Some(toml::Value::Table(t)) => t, _ => toml::Table::new() };
+                merge(&mut base, part);
+                table.insert(key.into(), toml::Value::Table(base));
+            }
+            if let Some(toml::Value::Table(meta)) = table.get_mut("meta") { meta.insert("scheme".into(), toml::Value::String(if dark { "dark" } else { "light" }.into())); }
+        }
+    }
     let sub = |k: &str| match vt.get(k) { Some(toml::Value::Table(t)) => { let mut t = t.clone(); t.remove("derive"); t } _ => toml::Table::new() };
     let (mut colors, mut alt) = (sub("colors"), sub("colors_alt"));
     let has_pair = colors.contains_key("bg") && colors.contains_key("fg");

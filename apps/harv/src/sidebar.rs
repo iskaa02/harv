@@ -85,15 +85,34 @@ fn arrange(items: Vec<String>, order: &[String], hidden: &[String]) -> Vec<Strin
     out
 }
 
+/// Rail item: the icon inside a pill-shaped indicator box, the label below.
+fn rail_item(icon: &str, label: &str, collapsible: &mut Vec<gtk::Widget>) -> gtk::Box {
+    let v = gtk::Box::new(gtk::Orientation::Vertical, 4);
+    v.set_halign(gtk::Align::Center);
+    let ind = gtk::Box::builder().css_classes(["rail-indicator"]).halign(gtk::Align::Center).build();
+    let img = gtk::Image::from_icon_name(icon);
+    img.set_hexpand(true);
+    img.set_halign(gtk::Align::Center);
+    ind.append(&img);
+    let l = gtk::Label::builder().label(label).css_classes(["rail-label"]).build();
+    collapsible.push(l.clone().upcast());
+    v.append(&ind);
+    v.append(&l);
+    v
+}
+
 pub fn build(ctx: &Rc<Ctx>, cfg: &Cfg, on_root: Rc<dyn Fn(Root)>, compact: &Rc<Compact>) -> Built {
     let width = ctx.theme().metrics.sidebar_w;
     let classic = cfg.style == "classic";
+    // Material-style navigation rail: icon with a pill indicator, label underneath, no section titles.
+    let rail = !classic && cfg.item_style == "rail";
     let (order, hidden) = user_layout(ctx);
     let items = arrange(base_items(cfg), &order, &hidden);
     let (brand, prefs_row) = if classic { (true, true) } else { (cfg.brand, cfg.prefs) };
 
     let sidebar = gtk::Box::new(gtk::Orientation::Vertical, 0);
     sidebar.add_css_class("sidebar");
+    if rail { sidebar.add_css_class("rail"); }
     sidebar.set_width_request(width);
     // Children (the search hint label) may ask to expand; the sidebar itself must keep its width and leave the extra space to the page.
     sidebar.set_hexpand(false);
@@ -122,6 +141,7 @@ pub fn build(ctx: &Rc<Ctx>, cfg: &Cfg, on_root: Rc<dyn Fn(Root)>, compact: &Rc<C
     let mut roots: Vec<Option<Root>> = vec![];
     for id in &items {
         if let Some(key) = id.strip_prefix("section:") {
+            if rail { continue; }
             let section = gtk::Label::builder().label(ctx.word(key)).xalign(0.0).css_classes(["nav-section"]).build();
             let row = gtk::ListBoxRow::builder().selectable(false).activatable(false).child(&section).build();
             collapsible.push(section.upcast());
@@ -130,12 +150,16 @@ pub fn build(ctx: &Rc<Ctx>, cfg: &Cfg, on_root: Rc<dyn Fn(Root)>, compact: &Rc<C
             continue;
         }
         let Some((icon, key, root)) = item(id) else { eprintln!("theme: unknown sidebar item `{id}`"); continue };
-        let h = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-        h.append(&gtk::Image::from_icon_name(icon));
-        let l = gtk::Label::new(Some(&ctx.word(key)));
-        collapsible.push(l.clone().upcast());
-        h.append(&l);
+        let h = if rail { rail_item(icon, &ctx.word(key), &mut collapsible) } else {
+            let h = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+            h.append(&gtk::Image::from_icon_name(icon));
+            let l = gtk::Label::new(Some(&ctx.word(key)));
+            collapsible.push(l.clone().upcast());
+            h.append(&l);
+            h
+        };
         let row = gtk::ListBoxRow::builder().child(&h).css_classes(["nav-row"]).build();
+        if rail { row.add_css_class("rail"); }
         if !classic && cfg.item_shape == "pill" { row.add_css_class("pill"); }
         list.append(&row);
         roots.push(Some(root));
@@ -180,11 +204,14 @@ pub fn build(ctx: &Rc<Ctx>, cfg: &Cfg, on_root: Rc<dyn Fn(Root)>, compact: &Rc<C
 
     if classic || prefs_row {
         let prefs = gtk::Button::builder().css_classes(["flat", "nav-prefs"]).build();
-        let ph = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-        ph.append(&gtk::Image::from_icon_name("emblem-system-symbolic"));
-        let pl = gtk::Label::new(Some(&ctx.word("preferences")));
-        collapsible.push(pl.clone().upcast());
-        ph.append(&pl);
+        let ph = if rail { prefs.add_css_class("rail"); rail_item("emblem-system-symbolic", &ctx.word("preferences"), &mut collapsible) } else {
+            let ph = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+            ph.append(&gtk::Image::from_icon_name("emblem-system-symbolic"));
+            let pl = gtk::Label::new(Some(&ctx.word("preferences")));
+            collapsible.push(pl.clone().upcast());
+            ph.append(&pl);
+            ph
+        };
         prefs.set_child(Some(&ph));
         { let ctx = ctx.clone(); prefs.connect_clicked(move |_| ctx.navigate(Nav::Settings)); }
         sidebar.append(&prefs);

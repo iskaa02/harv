@@ -1,0 +1,130 @@
+#:schema ../../theme.schema.json
+# Material 3 Expressive, built from the generator: the palette follows the playing artwork (regenerated on every track),
+# surfaces are tonal steps, shapes are large and morph on press, motion is springy, the seek bar is wavy.
+# `harv --validate-theme docs/examples/material-expressive` checks it; install it with `harv --install-theme`.
+
+[meta]
+name = "Material Expressive"
+extends = "blur"
+scheme = "dark"
+
+[material]
+seed = "cover"            # or a fixed colour like "#6750a4"
+variant = "expressive"    # tonal-spot | vibrant | expressive | neutral | fidelity
+
+[fonts]
+ui = "Roboto"             # a variable font: weight and width axes are used below
+mono = "Roboto"
+
+[shape]
+xs = 8
+sm = 12
+md = 16
+lg = 20
+input = 28
+xl = 28
+control = 9999
+cover = 20
+hero = 28
+[shape.component]
+play = 20                 # rounded-square play button instead of a circle
+card = 28
+nav = 16
+[shape.pressed]           # radius while pressed: the expressive shape morph
+play = 28
+chip = 8
+card = 18
+button = 10
+
+[metrics]
+sidebar_w = 88
+track_row_h = 64
+border_w = 0
+
+[effects]
+ambient = 0.0
+bar_tint = 0.0
+shadow = 0.0              # M3 uses tonal elevation, not drop shadows
+state = 1.0               # hover / press overlay strength
+
+[type]
+scale = 1.0
+weight_shift = 0
+[type.headline_large]
+size = 34
+weight = 500
+width = 105
+[type.label_medium]
+size = 12
+weight = 500
+tracking = 0.5
+
+[motion]
+spatial = "cubic-bezier(0.38, 1.21, 0.22, 1)"   # springy overshoot for shape / position
+effects = "cubic-bezier(0.34, 0.8, 0.34, 1)"    # no overshoot for colour / opacity
+
+[shell.sidebar]
+style = "custom"
+item_style = "rail"
+items = ["home", "search", "charts", "favorites", "recent", "downloads", "following"]
+brand = false
+prefs = true
+
+[shell.bottom_bar]
+style = "parts"
+show = "always"
+height = 88
+
+[[shell.bottom_bar.parts]]
+c = "cover"
+size = 56
+
+[[shell.bottom_bar.parts]]
+c = "title"
+width = 220
+
+[[shell.bottom_bar.parts]]
+c = "transport"
+buttons = ["shuffle", "prev", "play", "next", "repeat"]
+play = "rounded"
+play_size = 52
+size = 36
+group = "connected"
+
+[[shell.bottom_bar.parts]]
+c = "seek"
+style = "wavy"
+wave_amp = 3
+wave_len = 28
+wave_stroke = 4
+times = true
+
+[[shell.bottom_bar.parts]]
+c = "volume"
+width = 96
+
+[lyrics]
+backdrop = "gradient"
+layout = "centered"
+align = "center"
+chrome = "capsule"
+cover_radius = 28
+blur = 0.6
+glow = 0.5
+
+[variants.vibrant]
+name = "Vibrant"
+[variants.vibrant.material]
+variant = "vibrant"
+
+[variants.baseline]
+name = "Baseline purple"
+[variants.baseline.material]
+seed = "#6750a4"
+variant = "tonal-spot"
+
+[variants.forest]
+name = "Forest"
+[variants.forest.material]
+seed = "#2e7d32"
+variant = "fidelity"

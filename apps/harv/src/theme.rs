@@ -159,7 +159,10 @@ impl Skin {
 
     /// Stylesheet text for `theme`; a template error leaves the old stylesheet in place.
     fn paint(&self, theme: &Theme) -> Result<(), String> {
-        self.provider.load_from_string(&theme.stylesheet(&template(self.watch)?)?);
+        let css = theme.stylesheet(&template(self.watch)?)?;
+        // Dev aid: write the final stylesheet so a refactor can be diffed against a baseline.
+        if let Some(path) = std::env::var_os("HARV_DUMP_CSS") { let _ = std::fs::write(path, &css); }
+        self.provider.load_from_string(&css);
         Ok(())
     }
 

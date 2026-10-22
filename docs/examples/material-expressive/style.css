@@ -1,0 +1,25 @@
+/* Material 3 Expressive on top of the generated scheme. @m3_<role> are the raw M3 colour roles. */
+.page-title { {{type:headline_large}} letter-spacing: 0; }
+.section-title { {{type:title_large}} letter-spacing: 0; }
+.sidebar { background: @m3_surface_container; border-right: none; }
+.nav-row.rail .rail-label { {{type:label_medium}} }
+
+/* Filled-tonal chips and buttons */
+.chip { background: @m3_surface_container_high; color: @m3_on_surface_variant; box-shadow: none; transition: border-radius {{ms:160}} {{ease:spatial}}, background {{ms:200}} {{ease:effects}}; }
+.chip:hover { background: @m3_surface_container_highest; }
+.chip:checked { background: @m3_secondary_container; color: @m3_on_secondary_container; box-shadow: none; }
+button.pill, .pill-btn { background: @m3_secondary_container; color: @m3_on_secondary_container; }
+button.pill.suggested-action { background: @m3_primary; color: @m3_on_primary; }
+
+/* Cards: tonal containers instead of shadows */
+.card-btn:hover { background: @m3_surface_container_high; box-shadow: none; }
+.card-btn .art { box-shadow: none; transition: transform {{ms:260}} {{ease:spatial}}; }
+.card-btn:hover .art { transform: scale(1.04); box-shadow: none; }
+.card-play { background: @m3_primary_container; color: @m3_on_primary_container; box-shadow: none; }
+
+/* Search and popups */
+.s-box, searchentry.lib-search { background: @m3_surface_container_high; box-shadow: none; }
+.suggest-list { background: @m3_surface_container_high; box-shadow: none; }
+.themed-bar { background: @m3_surface_container; border-top: none; }
+.themed-bar .btn-group button.grouped { background: @m3_surface_container_highest; }
+.track-row:hover { background: alpha(@fg, {{st:0.08}}); }
