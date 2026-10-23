@@ -357,6 +357,8 @@ impl LyricsView {
                 ..Trans::default()
             };
         });
+        // The outgoing lines now live only in `leaving`; drop the live ones so they don't scroll back to the top while the new lyrics load.
+        self.set_lyrics(None);
         self.kick();
     }
 

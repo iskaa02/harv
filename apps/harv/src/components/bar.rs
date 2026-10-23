@@ -95,6 +95,13 @@ fn pointer_open(ctx: &Rc<Ctx>, w: &impl IsA<gtk::Widget>) {
     w.set_cursor_from_name(Some("pointer"));
 }
 
+/// Clicking empty bar background opens the player too (buttons, sliders and the like claim their own presses, which cancels this).
+fn pointer_open_bg(ctx: &Rc<Ctx>, w: &impl IsA<gtk::Widget>) {
+    let open = gtk::GestureClick::new();
+    { let ctx = ctx.clone(); open.connect_released(move |_, _, _, _| ctx.navigate(Nav::NowPlaying)); }
+    w.add_controller(open);
+}
+
 // ── cover ────────────────────────────────────────────────────────────────────────────────────
 /// `size` px; `shape` = `square` | `round`. Radius comes from CSS (`.bar-cover`).
 fn cover(env: &Env, n: &Node) -> gtk::Widget {
@@ -387,6 +394,7 @@ pub fn bottom_bar(ctx: &Rc<Ctx>) -> gtk::Widget {
     let row = build_all(&env, &parts, gtk::Orientation::Horizontal, 14);
     row.add_css_class("themed-bar");
     row.set_size_request(-1, bb.height);
+    pointer_open_bg(ctx, &row);
     let revealer = gtk::Revealer::builder().transition_type(gtk::RevealerTransitionType::SlideUp).hexpand(true).build();
     revealer.set_child(Some(&row));
     let weak = revealer.downgrade();

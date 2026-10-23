@@ -214,7 +214,7 @@ pub fn build(app: &adw::Application, ctx: &Rc<Ctx>, size: (i32, i32)) -> Window 
             Nav::NowPlaying => {
                 if ctx2.theme().shell.now_playing.host == "page" {
                     if visible_kind(&nav) != "now" { nav.push(&components::now::page(&ctx2)); }
-                } else if stack.visible_child_name().as_deref() != Some("playing") {
+                } else if stack.visible_child_name().as_deref() != Some("playing") || CLOSING.with(|c| c.replace(false)) {
                     open_full(&stack, &np2);
                 }
             }
@@ -308,6 +308,7 @@ pub fn build(app: &adw::Application, ctx: &Rc<Ctx>, size: (i32, i32)) -> Window 
 /// Open: the backdrop cross-fades in, then the view's own choreography plays (cover, title, progress bar, lyric lines) and the
 /// transport row fades in last (CSS transition delay). Close: the same backwards and faster, then the backdrop cross-fades out.
 fn open_full(stack: &gtk::Stack, np: &Rc<RefCell<Option<player::NowPlaying>>>) {
+    CLOSE_GEN.with(|g| g.set(g.get().wrapping_add(1))); // cancels a pending close_full timer (reopened while closing)
     let Some((view, chrome)) = np.borrow().as_ref().map(|n| (n.view.clone(), n.chrome.clone())) else { return };
     for c in &chrome { c.add_css_class("np-hidden"); }
     stack.set_transition_duration(300);
@@ -324,6 +325,8 @@ fn open_full(stack: &gtk::Stack, np: &Rc<RefCell<Option<player::NowPlaying>>>) {
     });
 }
 
+thread_local! { static CLOSE_GEN: std::cell::Cell<u32> = const { std::cell::Cell::new(0) }; static CLOSING: std::cell::Cell<bool> = const { std::cell::Cell::new(false) }; }
+
 fn close_full(stack: &gtk::Stack, np: &Rc<RefCell<Option<player::NowPlaying>>>) {
     let finish = |stack: &gtk::Stack| { stack.set_transition_duration(300); stack.set_visible_child_name("browse"); };
     let parts = np.borrow().as_ref().map(|n| (n.view.clone(), n.chrome.clone()));
@@ -331,5 +334,11 @@ fn close_full(stack: &gtk::Stack, np: &Rc<RefCell<Option<player::NowPlaying>>>) 
     for c in &chrome { c.add_css_class("np-hidden"); }
     view.conceal();
     let stack = stack.clone();
-    gtk::glib::timeout_add_local_once(std::time::Duration::from_millis(lyrics_view::LyricsView::CONCEAL_MS as u64), move || finish(&stack));
+    let my_gen = CLOSE_GEN.with(|g| { let n = g.get().wrapping_add(1); g.set(n); n });
+    CLOSING.with(|c| c.set(true));
+    gtk::glib::timeout_add_local_once(std::time::Duration::from_millis(lyrics_view::LyricsView::CONCEAL_MS as u64), move || {
+        if CLOSE_GEN.with(|g| g.get()) != my_gen { return; }
+        CLOSING.with(|c| c.set(false));
+        finish(&stack);
+    });
 }
