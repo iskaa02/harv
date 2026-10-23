@@ -73,7 +73,7 @@ use std::sync::Arc;
 
 impl Ctx {
     pub fn new(rt: tokio::runtime::Handle, ytm: Arc<Ytm>, store: Store, engine: Engine, lyrics: LyricsService, theme: Rc<theme_core::Theme>) -> Rc<Self> {
-        let images = Images::new(rt.clone());
+        let images = Images::new();
         Rc::new(Self { rt, ytm, store, engine, lyrics, images, snap: RefCell::new(None), hooks: RefCell::default(), rows: RefCell::default(), toasts: adw::ToastOverlay::new(), accent: gtk::CssProvider::new(), last_cover: Cell::new(None), nav: RefCell::default(), pending: Cell::new(0), theme: RefCell::new(theme), theme_hooks: RefCell::default(), accent_rgb: Cell::new([1.0, 0.22, 0.37]), accent_hooks: RefCell::default(), action_toast: RefCell::default(), layout_gen: Cell::new(0), slow_load: RefCell::default() })
     }
 

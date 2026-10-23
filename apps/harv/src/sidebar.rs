@@ -72,7 +72,7 @@ fn arrange(items: Vec<String>, order: &[String], hidden: &[String]) -> Vec<Strin
     let mut out: Vec<String> = vec![];
     let mut segment: Vec<String> = vec![];
     let mut heading: Option<String> = None;
-    let mut flush = |heading: &mut Option<String>, segment: &mut Vec<String>, out: &mut Vec<String>| {
+    let flush = |heading: &mut Option<String>, segment: &mut Vec<String>, out: &mut Vec<String>| {
         segment.sort_by_key(|id| order.iter().position(|o| o == id).unwrap_or(usize::MAX));
         segment.retain(|id| !hidden.contains(id));
         if !segment.is_empty() { if let Some(h) = heading.take() { out.push(h); } out.append(segment); }

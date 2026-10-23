@@ -93,7 +93,6 @@ impl Skin {
         match variant { Some(v) => { m.insert(spec.into(), v.into()); } None => { m.remove(spec); } }
     }
 
-    pub fn density(&self) -> u32 { self.density.get() }
 
     /// Set the row density; takes effect on the next [`Skin::switch`] (or at startup, before the first load).
     pub fn set_density(&self, d: u32) { self.density.set(d.min(2)); crate::rows::set_density(d); }

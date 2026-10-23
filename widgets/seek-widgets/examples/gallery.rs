@@ -4,16 +4,14 @@
 //!   cargo run -p seek-widgets --example gallery -- --screenshot /tmp/x.png [--hover 0.4] [--progress 0.38]
 
 use gtk::{gdk, glib, graphene, prelude::*};
-use seek_widgets::{pseudo_peaks, OrbitCover, Ring, Waveform};
+use seek_widgets::{pseudo_peaks, Waveform};
 
 const CSS: &str = r#"
 .panel { padding: 24px 28px; }
 .light { background-color: #f4f1ea; color: #1d1b18; }
 .dark { background-color: #14161b; color: #e8e6e1; }
-.light seek-waveform, .light seek-ring, .light seek-orbit-cover { color: #0f9470; }
-.dark seek-waveform, .dark seek-ring, .dark seek-orbit-cover { color: #3ee0a6; }
-.light seek-orbit-cover { background-color: #f4f1ea; }
-.dark seek-orbit-cover { background-color: #14161b; }
+.light seek-waveform { color: #0f9470; }
+.dark seek-waveform { color: #3ee0a6; }
 "#;
 
 struct Args {
@@ -36,34 +34,8 @@ fn parse_args() -> Args {
     a
 }
 
-fn gradient(c1: [u8; 3], c2: [u8; 3]) -> gdk::Texture {
-    let n = 96usize;
-    let mut px = vec![0u8; n * n * 4];
-    for y in 0..n {
-        for x in 0..n {
-            let t = (x + y) as f32 / (2 * n) as f32;
-            let i = (y * n + x) * 4;
-            for c in 0..3 {
-                px[i + c] = (c1[c] as f32 + (c2[c] as f32 - c1[c] as f32) * t) as u8;
-            }
-            px[i + 3] = 255;
-        }
-    }
-    gdk::MemoryTexture::new(n as i32, n as i32, gdk::MemoryFormat::R8g8b8a8, &glib::Bytes::from_owned(px), n * 4).upcast()
-}
-
 fn panel(class: &str, cover: &gdk::Paintable, args: &Args) -> gtk::Box {
     let peaks = pseudo_peaks("gallery-track-1", 240);
-
-    let orbit = OrbitCover::new();
-    orbit.set_cover(Some(cover));
-    orbit.set_satellites(vec![
-        gradient([255, 120, 90], [250, 200, 80]).upcast(),
-        gradient([90, 140, 255], [160, 90, 230]).upcast(),
-        gradient([60, 200, 170], [30, 110, 120]).upcast(),
-    ]);
-    orbit.set_progress(args.progress);
-    orbit.set_halign(gtk::Align::Center);
 
     let wave = Waveform::new();
     wave.set_peaks(&peaks);
@@ -71,18 +43,13 @@ fn panel(class: &str, cover: &gdk::Paintable, args: &Args) -> gtk::Box {
     wave.set_hover(args.hover);
     wave.connect_seek(|f| eprintln!("seek {f:.3}"));
 
-    let ring = Ring::new();
     let pic = gtk::Picture::for_paintable(cover);
     pic.set_content_fit(gtk::ContentFit::Cover);
-    ring.set_child(Some(&pic));
-    ring.set_size(132);
-    ring.set_thickness(5.0);
-    ring.set_gap(6.0);
-    ring.set_progress(args.progress);
+    pic.set_size_request(96, 96);
 
     let row = gtk::Box::new(gtk::Orientation::Horizontal, 24);
     row.set_halign(gtk::Align::Center);
-    row.append(&ring);
+    row.append(&pic);
     let info = gtk::Box::new(gtk::Orientation::Vertical, 4);
     info.set_valign(gtk::Align::Center);
     let title = gtk::Label::new(Some("Blue in Green"));
@@ -99,7 +66,6 @@ fn panel(class: &str, cover: &gdk::Paintable, args: &Args) -> gtk::Box {
     col.add_css_class("panel");
     col.add_css_class(class);
     col.set_size_request(560, -1);
-    col.append(&orbit);
     col.append(&wave);
     col.append(&row);
     col

@@ -579,7 +579,6 @@ pub fn local_playlist(ctx: &Rc<Ctx>, id: i64) -> adw::NavigationPage {
                     }
                 })),
                 on_move: Some(Rc::new(move |from, to| { let _ = c2.store.move_in_playlist(id, from, to); call2(); })),
-                show_art: true,
                 ..Default::default()
             };
             let all = Rc::new(tracks);

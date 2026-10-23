@@ -1,7 +1,6 @@
 //! Bundled symbolic icons (the Adwaita set has no heart). Written to `$XDG_CACHE_HOME/harv/icons/hicolor/scalable/actions/`
 //! and added to the icon theme's search path. Never fails the app: problems go to stderr.
 
-use gtk::prelude::*;
 use std::path::PathBuf;
 
 const ICONS: [(&str, &str); 3] = [

@@ -1,3 +1,4 @@
+#![allow(deprecated)] // upstream deprecations we still rely on (vendored copy)
 //! # ytmapi_rs
 //! Library into YouTube Music's internal API.
 //! ## Examples

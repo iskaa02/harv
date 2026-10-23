@@ -1,6 +1,6 @@
 //! Reusable building blocks: cover art, track lists (rows, per-row menu, multi-select), cards, add-to-playlist dialog.
 
-use crate::ctx::{Ctx, Nav};
+use crate::ctx::Ctx;
 use adw::prelude::*;
 use gtk::{glib, pango};
 use player_core::{Command, QueueKind};
@@ -74,7 +74,6 @@ impl Look {
 pub struct RowExtras {
     pub on_remove: Option<Rc<dyn Fn(usize)>>,
     pub on_move: Option<Rc<dyn Fn(usize, usize)>>,
-    pub show_art: bool,
     /// Show the track number instead of cover art (album pages).
     pub numbered: bool,
     /// Theme variant (default `Classic` = the original rows, unchanged).
@@ -412,7 +411,6 @@ pub fn add_to_playlist(ctx: &Rc<Ctx>, tracks: Vec<Track>) {
     dialog.present(ctx.toasts.root().as_ref());
 }
 
-/// A carousel card: cover (with a play badge that fades in on hover), title, subtitle. `on_click` fires on press.
 thread_local! { static DENSITY: Cell<u32> = const { Cell::new(1) }; }
 
 /// Preferences → Layout → Density (0 compact, 1 comfortable, 2 spacious): scales the cover in song rows along with the row height.
@@ -583,4 +581,3 @@ pub fn skeleton_shelves() -> gtk::Widget {
     col.upcast()
 }
 
-pub fn open(ctx: &Rc<Ctx>, n: Nav) -> impl Fn() + 'static { let ctx = ctx.clone(); move || ctx.navigate(n.clone()) }

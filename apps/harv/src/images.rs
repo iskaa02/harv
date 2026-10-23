@@ -40,7 +40,6 @@ impl TextureCache {
 
 #[derive(Clone)]
 pub struct Images {
-    rt: tokio::runtime::Handle,
     http: reqwest::Client,
     /// Caps parallel downloads so a page of covers can't crowd out the audio stream on a slow link.
     gate: std::sync::Arc<tokio::sync::Semaphore>,
@@ -66,12 +65,12 @@ pub fn sized(url: &str, px: u32) -> String {
 fn hash(s: &str) -> u64 { s.bytes().fold(0xcbf29ce484222325u64, |h, b| (h ^ b as u64).wrapping_mul(0x100000001b3)) }
 
 impl Images {
-    pub fn new(rt: tokio::runtime::Handle) -> Self {
+    pub fn new() -> Self {
         let base = std::env::var_os("XDG_CACHE_HOME").map(PathBuf::from).or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cache"))).unwrap_or_else(|| PathBuf::from("/tmp"));
         let dir = base.join("harv").join("thumbs");
         let _ = std::fs::create_dir_all(&dir);
         let http = reqwest::Client::builder().user_agent("harv/0.1").connect_timeout(std::time::Duration::from_secs(8)).timeout(std::time::Duration::from_secs(20)).build().expect("http client");
-        Self { rt, http, gate: std::sync::Arc::new(tokio::sync::Semaphore::new(6)), dir, mem: Rc::default(), waiting: Rc::default() }
+        Self { http, gate: std::sync::Arc::new(tokio::sync::Semaphore::new(6)), dir, mem: Rc::default(), waiting: Rc::default() }
     }
 
     /// Texture for `url` at roughly `px` pixels (callback runs on the main loop, `None` on failure).
@@ -112,7 +111,6 @@ impl Images {
         self.mem.borrow_mut().clear();
     }
 
-    pub fn rt(&self) -> &tokio::runtime::Handle { &self.rt }
 }
 
 async fn fetch(http: &reqwest::Client, gate: &tokio::sync::Semaphore, url: &str, path: &PathBuf) -> Option<Vec<u8>> {

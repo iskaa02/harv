@@ -69,7 +69,6 @@ struct Trans {
     leaving: Vec<Leaving>,
 }
 
-const TITLE_D: f32 = 0.7;
 const LEAVE_D: f32 = 0.35;
 const COVER_D: f32 = 0.7;
 const BG_D: f32 = 1.0;
@@ -906,7 +905,6 @@ fn draw_meta(snap: &gtk::Snapshot, s: &State) {
 
 /// Fade lines out towards the top / bottom edge of the lyrics area instead of cutting them off.
 fn edge_fade(l: &layout::Layout, cy: f32) -> f32 {
-    let [_, vh] = l.viewport;
     let (top, bottom) = (l.lyrics_top, l.lyrics_bottom);
     let f = (bottom - top) * 0.14;
     smooth((cy - top) / f) * smooth((bottom - cy) / f)
