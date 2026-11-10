@@ -66,7 +66,7 @@ fn hash(s: &str) -> u64 { s.bytes().fold(0xcbf29ce484222325u64, |h, b| (h ^ b as
 
 impl Images {
     pub fn new() -> Self {
-        let base = std::env::var_os("XDG_CACHE_HOME").map(PathBuf::from).or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cache"))).unwrap_or_else(|| PathBuf::from("/tmp"));
+        let base = dirs::cache_dir().unwrap_or_else(|| std::env::temp_dir());
         let dir = base.join("harv").join("thumbs");
         let _ = std::fs::create_dir_all(&dir);
         let http = reqwest::Client::builder().user_agent("harv/0.1").connect_timeout(std::time::Duration::from_secs(8)).timeout(std::time::Duration::from_secs(20)).build().expect("http client");

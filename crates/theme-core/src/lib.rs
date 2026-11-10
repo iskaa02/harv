@@ -341,6 +341,10 @@ pub struct Theme {
     /// Per page-kind layouts (`[page.playlist]`, `[page.library]`, `[page.search]`, `[page.now]`); absent = built-in composition.
     #[serde(default)]
     pub page: BTreeMap<String, Page>,
+    /// Component styles (`[style.<component>]` with state sub-tables), read by the Rune front-end in place of `style.css`.
+    /// Kept as raw TOML here; the front-end owns the slot schema.
+    #[serde(default)]
+    pub style: BTreeMap<String, toml::Value>,
     /// Concatenated `style.css` of the theme chain (parents first); appended after the app stylesheet.
     #[serde(skip)] pub css: String,
     /// Folder of the theme (None for built-ins) — what the dev watcher monitors.
@@ -602,6 +606,14 @@ impl Loader {
         problems.extend(theme.lyrics.validate());
         if !problems.is_empty() { return Err(format!("theme `{id}`: {}", problems.join("; "))); }
         theme.meta.id = id;
+        // macOS: Inter isn't installed there and isn't required, so themes that ask for it use San Francisco (Pango's
+        // CoreText backend calls it `system-ui`); and SF ends every fallback list, so a theme font that's missing lands
+        // on the system font rather than whatever Pango picks first (Helvetica).
+        #[cfg(target_os = "macos")]
+        {
+            for f in [&mut theme.fonts.ui, &mut theme.fonts.mono] { if f.eq_ignore_ascii_case("Inter") { *f = "system-ui".into(); } }
+            if !theme.fonts.fallbacks.iter().any(|f| f == "system-ui") { theme.fonts.fallbacks.push("system-ui".into()); }
+        }
         theme.css = css;
         theme.dir = dir;
         theme.variant = applied;
@@ -665,9 +677,9 @@ fn merge(base: &mut toml::Table, child: toml::Table) {
     }
 }
 
-/// Directories searched for user themes: `$XDG_CONFIG_HOME/harv/themes` (default `~/.config/harv/themes`).
+/// Directories searched for user themes: `$XDG_CONFIG_HOME/harv/themes` (default `~/.config/harv/themes` on Linux, `~/Library/Application Support/harv/themes` on macOS).
 pub fn user_theme_dir() -> PathBuf {
-    std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config"))).unwrap_or_else(|| PathBuf::from(".")).join("harv/themes")
+    dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("harv/themes")
 }
 
 /// Overlay a `[variants.<id>]` table onto the merged theme table (see [`Variant`]).

@@ -28,6 +28,7 @@ seek-widgets = { path = "../../widgets/seek-widgets" }
 lyrics-view = { path = "../../widgets/lyrics-view" }
 nucleo-matcher = "0.3.1"
 libc = "0.2"
+dirs = "5"
 
 # .deb (cargo-deb) — shared-library deps are detected from the binary
 [package.metadata.deb]

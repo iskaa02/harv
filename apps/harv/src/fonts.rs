@@ -70,7 +70,7 @@ fn system_knows(config: *mut FcConfig, family: &str) -> bool {
 
 /// `$XDG_CACHE_HOME/harv/fonts`, or `~/.cache/harv/fonts`.
 fn cache_dir() -> Option<PathBuf> {
-    let base = std::env::var_os("XDG_CACHE_HOME").filter(|v| !v.is_empty()).map(PathBuf::from).or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cache")))?;
+    let base = dirs::cache_dir()?;
     Some(base.join("harv").join("fonts"))
 }
 

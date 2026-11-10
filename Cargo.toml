@@ -15,6 +15,7 @@ opt-level = 1
 [profile.dev.package."*"]
 opt-level = 3
 
-# ytmapi-rs 0.3.3 + one fix: song search rows whose album run has no browseId failed the whole search (vendor/ytmapi-rs)
+# ytmapi-rs 0.3.3 + two fixes (vendor/ytmapi-rs): song search rows whose album run has no browseId failed the whole search;
+# HTTP/2 header-list limit raised so music.youtube.com's large response headers don't fail every request (client.rs)
 [patch.crates-io]
 ytmapi-rs = { path = "vendor/ytmapi-rs" }

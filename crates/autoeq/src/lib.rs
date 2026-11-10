@@ -59,9 +59,7 @@ pub fn search<'a>(entries: &'a [Entry], q: &str) -> Vec<&'a Entry> {
 }
 
 pub fn cache_path() -> PathBuf {
-    let base = std::env::var_os("XDG_CACHE_HOME").map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cache")))
-        .unwrap_or_else(|| PathBuf::from("/tmp"));
+    let base = dirs::cache_dir().unwrap_or_else(std::env::temp_dir);
     base.join("harv").join("autoeq-index.md")
 }
 

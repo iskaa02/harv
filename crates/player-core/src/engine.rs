@@ -351,7 +351,7 @@ impl Actor {
         match result {
             Ok(s) => {
                 let paused = std::mem::take(&mut self.start_paused) | std::mem::take(&mut self.pause_next);
-                if let Err(e) = self.audio.load(&s.url, self.start_at.take(), paused) { return self.track_failed(e.to_string()); }
+                if let Err(e) = self.audio.load(&s.url, &s.mpv_options, self.start_at.take(), paused) { return self.track_failed(e.to_string()); }
                 self.status = if paused { Status::Paused } else { Status::Playing };
                 self.emit();
                 self.after_start();
@@ -456,7 +456,7 @@ impl Actor {
         self.failures = 0;
         self.start_at = None;
         self.start_paused = false;
-        if let Err(e) = self.audio.crossfade_to(&stream.url, self.crossfade_ms) { self.error(format!("crossfade: {e}")); return self.fresh_load(); }
+        if let Err(e) = self.audio.crossfade_to(&stream.url, &stream.mpv_options, self.crossfade_ms) { self.error(format!("crossfade: {e}")); return self.fresh_load(); }
         self.duration = next.duration_s.map_or(0.0, f64::from);
         self.status = Status::Playing;
         self.fetch_segments();

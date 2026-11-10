@@ -54,7 +54,11 @@ pub struct Audio {
 /// libmpv refuses to start unless `LC_NUMERIC` is "C". GTK calls `setlocale(LC_ALL, "")`, so call this after GTK init and before [`Audio::new`].
 pub fn fix_locale() {
     extern "C" { fn setlocale(category: i32, locale: *const std::ffi::c_char) -> *const std::ffi::c_char; }
+    // The category numbers are libc-specific: glibc uses 1, macOS/BSD libc uses 4 (where 1 is LC_COLLATE).
+    #[cfg(target_os = "linux")]
     const LC_NUMERIC: i32 = 1;
+    #[cfg(not(target_os = "linux"))]
+    const LC_NUMERIC: i32 = 4;
     unsafe { setlocale(LC_NUMERIC, c"C".as_ptr()); }
 }
 
@@ -66,9 +70,18 @@ fn push_volume(mpv: &Mpv, master: f64, sleep: f64, fade: f64) -> Result<()> {
     mpv.set_property("volume", (master * sleep * fade).clamp(0.0, 1.0) * 100.0).map_err(|e| anyhow!("{e}"))
 }
 
+/// `YTM_YTDLP`, else the first `yt-dlp` on PATH or in the usual Homebrew / pipx locations, else the bare name.
+fn ytdlp_path() -> String {
+    if let Ok(p) = std::env::var("YTM_YTDLP") { return p; }
+    let path = std::env::var_os("PATH").unwrap_or_default();
+    let home = std::env::var_os("HOME").map(std::path::PathBuf::from).unwrap_or_default();
+    std::env::split_paths(&path).chain(["/opt/homebrew/bin".into(), "/usr/local/bin".into(), home.join(".local/bin")])
+        .map(|d| d.join("yt-dlp")).find(|p| p.is_file()).map_or_else(|| "yt-dlp".into(), |p| p.to_string_lossy().into_owned())
+}
+
 fn new_mpv() -> Result<Mpv> {
     let mpv = Mpv::with_initializer(|i| {
-        for (k, v) in [("video", "no"), ("vid", "no"), ("audio-display", "no"), ("force-window", "no"), ("ytdl", "no"), ("idle", "yes"), ("keep-open", "no"),
+        for (k, v) in [("video", "no"), ("vid", "no"), ("audio-display", "no"), ("force-window", "no"), ("ytdl", "yes"), ("idle", "yes"), ("keep-open", "no"),
                        ("terminal", "no"), ("input-default-bindings", "no"), ("load-scripts", "no"), ("audio-client-name", "harv"), ("cache", "yes"), ("demuxer-max-bytes", "24MiB"), ("demuxer-max-back-bytes", "1MiB")] {
             i.set_option(k, v)?;
         }
@@ -83,6 +96,9 @@ fn new_mpv() -> Result<Mpv> {
                        ("stream-lavf-o", "reconnect=1,reconnect_streamed=1,reconnect_on_network_error=1,reconnect_delay_max=8")] {
             let _ = i.set_option(k, v);
         }
+        // mpv's built-in yt-dlp hook resolves watch URLs (ytm-core's default stream path); it loads with `ytdl=yes` regardless of
+        // `load-scripts`. Point it at the same binary ytm-core uses (`YTM_YTDLP`), which matters for a macOS .app without Homebrew on PATH.
+        let _ = i.set_option("script-opts", format!("ytdl_hook-ytdl_path={}", ytdlp_path()).as_str());
         // Escape hatch for headless runs (`HARV_AO=null`).
         if let Ok(ao) = std::env::var("HARV_AO") { i.set_option("ao", ao.as_str())?; }
         Ok(())
@@ -158,25 +174,26 @@ impl Audio {
     }
     fn apply_all(&self) -> Result<()> { self.apply_volume(0).and(self.apply_volume(1)) }
 
-    /// Replace whatever is playing. `start` seeks on load; `paused` starts the track paused.
-    pub fn load(&self, url: &str, start: Option<f64>, paused: bool) -> Result<()> {
+    /// Replace whatever is playing. `start` seeks on load; `paused` starts the track paused. `extra` is more per-file options for
+    /// `loadfile` (comma-separated, already `%len%`-quoted), e.g. the yt-dlp format when mpv resolves a watch URL itself.
+    pub fn load(&self, url: &str, extra: &str, start: Option<f64>, paused: bool) -> Result<()> {
         self.cancel_crossfade();
         self.clock.set_pos(start.unwrap_or(0.0));
         self.clock.set_dur(0.0);
         self.set_pause(paused)?;
-        let opts = start.map(|s| format!("start={s:.3}")).unwrap_or_default();
+        let opts = start.map(|s| format!("start={s:.3}")).into_iter().chain((!extra.is_empty()).then(|| extra.to_string())).collect::<Vec<_>>().join(",");
         self.decks[self.active_idx()].mpv.command("loadfile", &[url, "replace", "-1", &opts]).map_err(|e| anyhow!("loadfile: {e}"))
     }
 
     /// Fade out the current track on the active deck while `url` fades in on the other one over `fade_ms`.
-    pub fn crossfade_to(&self, url: &str, fade_ms: u64) -> Result<()> {
+    pub fn crossfade_to(&self, url: &str, extra: &str, fade_ms: u64) -> Result<()> {
         let old = self.active_idx();
         let new = 1 - old;
         let g = self.ramp_gen.fetch_add(1, Ordering::Relaxed) + 1;
         f_set(&self.decks[new].fade, 0.0);
         self.apply_all()?;
         self.decks[new].mpv.set_property("pause", false).map_err(|e| anyhow!("{e}"))?;
-        self.decks[new].mpv.command("loadfile", &[url, "replace", "-1", ""]).map_err(|e| anyhow!("loadfile: {e}"))?;
+        self.decks[new].mpv.command("loadfile", &[url, "replace", "-1", extra]).map_err(|e| anyhow!("loadfile: {e}"))?;
         // Events and the clock follow the new deck from here on; reset after the switch so the outgoing deck can't overwrite the reset.
         self.active.store(new, Ordering::Relaxed);
         self.clock.set_pos(0.0);

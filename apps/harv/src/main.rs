@@ -3,7 +3,11 @@ mod components;
 mod ctx;
 mod palette;
 mod effects;
+#[cfg(target_os = "linux")]
 mod fonts;
+/// Bundled theme fonts are registered through fontconfig, which only exists on Linux; elsewhere themes fall back to the system fonts.
+#[cfg(not(target_os = "linux"))]
+mod fonts { pub fn register() {} }
 mod miniplayer;
 mod icons;
 mod images;
@@ -96,13 +100,12 @@ fn parse_args() -> Opts {
 }
 
 fn data_dir() -> PathBuf {
-    std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local/share"))).unwrap_or_else(|| PathBuf::from(".")).join("harv")
+    dirs::data_dir().unwrap_or_else(|| PathBuf::from(".")).join("harv")
 }
 
 /// One-time move from the pre-rename `musssic` / `rawi` folders (data + user themes) so nothing is lost. Returns (old, new) data dirs when it moved them.
 fn migrate_legacy() -> Option<(PathBuf, PathBuf)> {
-    let xdg = |var: &str, rel: &str| std::env::var_os(var).map(PathBuf::from).or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(rel))).unwrap_or_else(|| PathBuf::from("."));
-    let (cfg, share) = (xdg("XDG_CONFIG_HOME", ".config"), xdg("XDG_DATA_HOME", ".local/share"));
+    let (cfg, share) = (dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")), dirs::data_dir().unwrap_or_else(|| PathBuf::from(".")));
     for old in ["rawi", "musssic"] { if !cfg.join("harv").exists() { let _ = std::fs::rename(cfg.join(old), cfg.join("harv")); } }
     let new = data_dir();
     if new.exists() { return None; }

@@ -56,7 +56,9 @@ impl QueryResponse {
 impl Client {
     /// Utilises reqwest's default tls choice for the enabled set of options.
     pub fn new() -> Result<Self> {
-        let inner = reqwest::Client::builder().build()?;
+        // harv fix: music.youtube.com's landing page can send ~11 KB of response headers over HTTP/2, past hyper's default
+        // header-list limit, which fails every request with "stream error: unspecific protocol error" (seen on macOS).
+        let inner = reqwest::Client::builder().http2_max_header_list_size(256 * 1024).build()?;
         Ok(Self { inner })
     }
     #[cfg(feature = "rustls")]

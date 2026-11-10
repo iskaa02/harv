@@ -117,6 +117,18 @@ pub fn build(ctx: &Rc<Ctx>, cfg: &Cfg, on_root: Rc<dyn Fn(Root)>, compact: &Rc<C
     // Children (the search hint label) may ask to expand; the sidebar itself must keep its width and leave the extra space to the page.
     sidebar.set_hexpand(false);
     let mut collapsible: Vec<gtk::Widget> = vec![];
+    // macOS draws native traffic lights where a native GtkWindowControls sits. By default that's the start of each page's
+    // header bar, mid-window right of the sidebar, with an empty slot; on macOS they belong at the window's top-left, so the
+    // sidebar holds them in a draggable strip above the brand (and pages.rs turns the header bars' own start slot off).
+    #[cfg(target_os = "macos")]
+    {
+        let controls = gtk::WindowControls::new(gtk::PackType::Start);
+        controls.set_property("use-native-controls", true);
+        controls.set_halign(gtk::Align::Start);
+        let handle = gtk::WindowHandle::builder().child(&controls).build();
+        handle.add_css_class("sidebar-titlebar");
+        sidebar.append(&handle);
+    }
     if brand {
         let app_name = gtk::Label::builder().label("Harv").xalign(0.0).css_classes(["app-name"]).build();
         collapsible.push(app_name.clone().upcast());

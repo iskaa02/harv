@@ -1,4 +1,9 @@
-//! Stream URL resolution through `yt-dlp -J`, with an in-memory cache keyed by video id.
+//! Stream resolution, with an in-memory cache keyed by video id.
+//!
+//! Default: hand mpv the watch URL and let its built-in yt-dlp hook pick the format (`mpv_options` carries `ytdl-format` and the
+//! cookies). Since late 2026 googlevideo answers 403 when another client plays a URL that `yt-dlp -J` printed, while mpv's hook,
+//! which resolves inside the player, still works. `HARV_DIRECT_STREAM=1` restores the old path (`yt-dlp -J` → direct URL, cached
+//! until it expires) in case YouTube changes back.
 //! Quality ↔ itag mapping mirrors SimpMusic (`Config.kt`): 250 low, 251 medium, 774 high opus, 141 high aac.
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -40,6 +45,8 @@ pub struct Stream {
     pub duration_s: Option<f64>,
     /// Unix seconds after which the URL stops working.
     pub expires_at: u64,
+    /// Per-file mpv options for `loadfile` (already `%len%`-quoted), e.g. the yt-dlp format selector. Empty for files and direct URLs.
+    pub mpv_options: String,
 }
 
 #[derive(Deserialize)]
@@ -91,7 +98,7 @@ impl StreamResolver {
         if !path.is_file() { return None; }
         Some(Stream {
             video_id: video_id.to_string(), url: path.to_string_lossy().into_owned(), itag: "local".into(), codec: String::new(),
-            ext: path.extension().and_then(|e| e.to_str()).unwrap_or_default().to_string(), bitrate_kbps: None, duration_s: None, expires_at: u64::MAX,
+            ext: path.extension().and_then(|e| e.to_str()).unwrap_or_default().to_string(), bitrate_kbps: None, duration_s: None, expires_at: u64::MAX, mpv_options: String::new(),
         })
     }
 
@@ -118,6 +125,7 @@ impl StreamResolver {
     pub(crate) fn invalidate(&self, video_id: &str) { self.cache.lock().unwrap().retain(|(id, _), _| id != video_id); }
 
     async fn run(&self, video_id: &str, quality: Quality) -> Result<Stream> {
+        if std::env::var_os("HARV_DIRECT_STREAM").is_none() { return Ok(self.via_mpv_hook(video_id, quality)); }
         let mut cmd = Command::new(&self.ytdlp);
         cmd.kill_on_drop(true);
         cmd.args(["-J", "--no-playlist", "--no-warnings", "--socket-timeout", "10", "--retries", "2", "--extractor-retries", "1", "-f", quality.selector()]);
@@ -138,6 +146,20 @@ impl StreamResolver {
             duration_s: info.duration,
             expires_at: expiry_of(&url),
             url,
+            mpv_options: String::new(),
         })
+    }
+
+    /// The watch URL for mpv's yt-dlp hook: no subprocess here, so this never fails; errors surface when mpv loads it.
+    fn via_mpv_hook(&self, video_id: &str, quality: Quality) -> Stream {
+        let mut opts = format!("ytdl-format={}", quality.selector());
+        if let Some(c) = self.cookies() {
+            let raw = format!("cookies={}", c.to_string_lossy());
+            opts += &format!(",ytdl-raw-options=%{}%{raw}", raw.len());
+        }
+        Stream {
+            video_id: video_id.to_string(), url: format!("https://music.youtube.com/watch?v={video_id}"), itag: "ytdl".into(), codec: String::new(),
+            ext: String::new(), bitrate_kbps: None, duration_s: None, expires_at: u64::MAX, mpv_options: opts,
+        }
     }
 }

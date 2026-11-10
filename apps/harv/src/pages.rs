@@ -25,6 +25,9 @@ pub fn shell(title: &str, content: &impl IsA<gtk::Widget>, header_extra: Option<
     let tv = adw::ToolbarView::new();
     let hb = adw::HeaderBar::new();
     hb.add_css_class("flat");
+    // macOS: the traffic lights live in the sidebar (sidebar.rs); without this every page header keeps an empty slot for them.
+    #[cfg(target_os = "macos")]
+    hb.set_show_start_title_buttons(false);
     if let Some(w) = header_extra { hb.pack_end(&w); }
     {
         let label = gtk::Label::builder().label(title).css_classes(["title"]).ellipsize(pango::EllipsizeMode::End).opacity(0.0).build();

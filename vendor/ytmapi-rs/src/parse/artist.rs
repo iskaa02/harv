@@ -276,9 +276,13 @@ fn parse_artist_top_releases_from_section_list_contents(
     mut contents: impl JsonCrawler,
 ) -> Result<GetArtistTopReleases> {
     let mut top_releases = GetArtistTopReleases::default();
+    // The songs shelf used to be the first section; since 2026 a header-less carousel can come first, so take the first
+    // music shelf wherever it is.
     top_releases.songs = contents
-        .borrow_pointer(concatcp!("/0", MUSIC_SHELF))
-        .ok()
+        .try_iter_mut()
+        .into_iter()
+        .flatten()
+        .find_map(|r| r.navigate_pointer(MUSIC_SHELF).ok())
         .map(parse_artist_songs)
         .transpose()?;
     // TODO: Check if Carousel Title is in list of categories.
@@ -293,7 +297,8 @@ fn parse_artist_top_releases_from_section_list_contents(
         .filter_map(|r| r.navigate_pointer("/musicCarouselShelfRenderer").ok())
     {
         // XXX: Should this only be on the first result per category?
-        let category = r.take_value_pointer(concatcp!(CAROUSEL_TITLE, "/text"))?;
+        // Shelves without a basic header (YouTube added some in 2026) carry nothing we read: skip them instead of failing the page.
+        let Ok(category) = r.take_value_pointer::<ArtistTopReleaseCategory>(concatcp!(CAROUSEL_TITLE, "/text")) else { continue };
         // Likely optional, need to confirm.
         // XXX: Errors here
         let browse_id: Option<ArtistChannelID> = r
@@ -315,7 +320,7 @@ fn parse_artist_top_releases_from_section_list_contents(
             ArtistTopReleaseCategory::Albums => {
                 let mut results = Vec::new();
                 for i in r.navigate_pointer("/contents")?.try_iter_mut()? {
-                    results.push(parse_album_from_mtrir(i.navigate_pointer(MTRIR)?)?);
+                    if let Ok(m) = i.navigate_pointer(MTRIR) { if let Ok(a) = parse_album_from_mtrir(m) { results.push(a); } }
                 }
                 let albums = GetArtistAlbums {
                     browse_id,

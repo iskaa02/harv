@@ -23,6 +23,8 @@ windowcontrols button:hover image { background: alpha(@fg, {{st:0.18}}); }
 
 /* ── sidebar */
 .sidebar { background: alpha(@bg_side, 0.92); padding: 18px 12px 12px 12px; border-right: 1px solid alpha(@fg, 0.06); }
+/* macOS: the strip holding the native traffic lights above the brand (sidebar.rs); pulled up to the window's top edge. */
+.sidebar-titlebar { min-height: 30px; margin: -12px -12px 4px -12px; padding: 0 12px; }
 .app-name { font-size: {{fs:21}}; font-weight: {{fw:800}}; letter-spacing: -0.6px; padding: 4px 12px 18px 12px; }
 .nav-list { background: transparent; }
 .nav-row { border-radius: {{r_nav}}px; padding: 9px 12px; margin: 2px 0; color: alpha(@fg, 0.72); font-weight: {{fw:600}}; font-size: {{fs:14}}; transition: background {{ms:150}} {{ease:ease}}, color {{ms:150}} {{ease:ease}}; }

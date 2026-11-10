@@ -19,6 +19,11 @@ const WINDOW_ICONS: [(&str, &str); 4] = [
 ];
 const OVERLAY_THEME: &str = "harv-icons";
 
+/// Original drawings for every standard icon name the app uses (icons/fallback/make.py). Installed into `hicolor`, the
+/// last theme in the lookup chain: on Linux Adwaita (or the user's theme) still provides these names, while GTK on macOS,
+/// which has no Adwaita icon theme at all, gets these instead of broken-image glyphs.
+const FALLBACK: &[(&str, &str)] = include!("../icons/fallback/list.rs");
+
 pub const HEART_ON: &str = "heart-filled-symbolic";
 pub const HEART_OFF: &str = "heart-outline-symbolic";
 /// "Radio on click" toggle.
@@ -28,11 +33,11 @@ pub const RADIO: &str = "station-radio-symbolic";
 pub fn heart(liked: bool) -> &'static str { if liked { HEART_ON } else { HEART_OFF } }
 
 pub fn register() {
-    let base = std::env::var_os("XDG_CACHE_HOME").map(PathBuf::from).or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cache"))).unwrap_or_else(|| PathBuf::from("/tmp"));
+    let base = dirs::cache_dir().unwrap_or_else(|| std::env::temp_dir());
     let root = base.join("harv").join("icons");
     let dir = root.join("hicolor/scalable/actions");
     if let Err(e) = std::fs::create_dir_all(&dir) { eprintln!("icons: {e}"); return; }
-    for (name, svg) in ICONS {
+    for (name, svg) in ICONS.iter().chain(FALLBACK.iter()).copied() {
         let p = dir.join(name);
         if std::fs::read_to_string(&p).ok().as_deref() != Some(svg) { if let Err(e) = std::fs::write(&p, svg) { eprintln!("icons: {e}"); } }
     }

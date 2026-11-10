@@ -497,6 +497,10 @@ impl LyricsView {
     fn text(&self, s: &str, px: f32, weight: pango::Weight, width: Option<f32>, plain: Option<Align>) -> pango::Layout {
         let l = self.create_pango_layout(Some(s));
         let mut d = pango::FontDescription::new();
+        // macOS: San Francisco (`system-ui` in Pango's CoreText backend) instead of Inter, which isn't installed there.
+        #[cfg(target_os = "macos")]
+        let stack = "system-ui, SF Arabic, Noto Sans Arabic, IBM Plex Sans Arabic, Vazirmatn, sans-serif";
+        #[cfg(not(target_os = "macos"))]
         let stack = "Inter, SF Arabic, Noto Sans Arabic, IBM Plex Sans Arabic, Vazirmatn, sans-serif";
         match self.with(|s| s.style.font_family.clone()) { Some(f) => d.set_family(&format!("{f}, {stack}")), None => d.set_family(stack) }
         d.set_weight(weight);
