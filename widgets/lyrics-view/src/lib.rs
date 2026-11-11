@@ -196,6 +196,39 @@ fn texture(img: &image::RgbaImage) -> gdk::Texture {
     .upcast()
 }
 
+/// The artwork's drop shadow (black at 45 %, 6 % of the cover below it, blur 12 % of the cover: CSS `0 6% 12%`) from a
+/// pre-blurred bitmap scaled to the cover. `append_outset_shadow` at this blur goes past what GSK's GL renderer draws in
+/// one pass on a 2x (Retina) screen, and it then shows the seams of its nine-slice fallback as light and dark boxes
+/// around and under the cover. The bitmap is made once per corner-radius ratio and is cheaper to draw anyway.
+fn cover_shadow(snap: &gtk::Snapshot, x: f32, y: f32, size: f32, radius: f32) {
+    const BASE: f32 = 192.0; // the cover's size in the bitmap; the blur hides the scaling
+    let blur = BASE * 0.12;
+    let sigma = blur / 2.0;
+    let pad = (sigma * 3.0).ceil();
+    let rk = ((radius / size.max(1.0)).clamp(0.0, 0.5) * 100.0).round() as u32;
+    thread_local! { static CACHE: std::cell::RefCell<Option<(u32, gdk::Texture)>> = const { std::cell::RefCell::new(None) }; }
+    let tex = CACHE.with(|c| {
+        if let Some((k, t)) = c.borrow().as_ref() { if *k == rk { return t.clone(); } }
+        let n = (BASE + 2.0 * pad) as u32;
+        let r = BASE * rk as f32 / 100.0;
+        let mut img = image::RgbaImage::new(n, n);
+        for (px, py, p) in img.enumerate_pixels_mut() {
+            // Inside the rounded square of side BASE centred in the canvas (coverage at the pixel centre is enough before a blur).
+            let (fx, fy) = (px as f32 + 0.5 - pad, py as f32 + 0.5 - pad);
+            let (qx, qy) = ((fx - BASE / 2.0).abs() - (BASE / 2.0 - r), (fy - BASE / 2.0).abs() - (BASE / 2.0 - r));
+            let d = qx.max(0.0).hypot(qy.max(0.0)) + qx.max(qy).min(0.0) - r;
+            let a = (0.5 - d).clamp(0.0, 1.0);
+            *p = image::Rgba([0, 0, 0, (a * 255.0 * 0.45) as u8]);
+        }
+        let t = texture(&image::imageops::blur(&img, sigma));
+        *c.borrow_mut() = Some((rk, t.clone()));
+        t
+    });
+    let k = size / BASE;
+    let (ox, oy) = (x - pad * k, y - pad * k + size * 0.06);
+    snap.append_scaled_texture(&tex, gsk::ScalingFilter::Linear, &rect(ox, oy, (BASE + 2.0 * pad) * k, (BASE + 2.0 * pad) * k));
+}
+
 fn rgba(c: [f32; 3], a: f32) -> gdk::RGBA {
     gdk::RGBA::new(c[0], c[1], c[2], a)
 }
@@ -827,7 +860,6 @@ fn draw_meta(snap: &gtk::Snapshot, s: &State) {
     let sc = s.scene.art_scale.x;
     let size = l.art[2] * sc;
     let (x, y) = (l.art[0] + (l.art[2] - size) / 2.0, l.art[1] + (l.art[2] - size) / 2.0);
-    let rr = rrect(x, y, size, size, l.art_radius);
     // (Lyrics-only layout: no artwork at all.)
     let kc = if l.art[2] <= 0.0 { 0.0 } else { intro_k(s, 0.10, 0.55) };
     // Open / close choreography: the artwork group rises, scales up and fades in first.
@@ -850,7 +882,7 @@ fn draw_meta(snap: &gtk::Snapshot, s: &State) {
             &[gsk::ColorStop::new(0.0, rgba(s.colors[0], a)), gsk::ColorStop::new(1.0, rgba(s.colors[0], 0.0))],
         );
     }
-    if s.style.cover_shadow { snap.append_outset_shadow(&rr, &gdk::RGBA::new(0.0, 0.0, 0.0, 0.45), 0.0, size * 0.06, 0.0, size * 0.12); }
+    if s.style.cover_shadow { cover_shadow(snap, x, y, size, l.art_radius); }
     // Track change: the old cover slides away against the direction of travel while the new one slides in and settles.
     let cover = |tex: &gdk::Texture, dx: f32, k: f32, op: f32| {
         let sz = size * k;
