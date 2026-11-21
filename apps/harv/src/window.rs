@@ -29,6 +29,7 @@ pub fn build(app: &adw::Application, ctx: &Rc<Ctx>, size: (i32, i32)) -> Window 
 
     let win = adw::ApplicationWindow::builder().application(app).title("Harv").default_width(size.0).default_height(size.1).width_request(760).height_request(520).build();
     win.add_css_class("harv-window");
+    crate::occlusion::watch(&win);
 
     // ---- narrow window: the sidebar collapses to icons (state shared with every sidebar instance); breakpoints are wired below
     let compact = Rc::new(Compact::default());

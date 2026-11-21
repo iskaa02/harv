@@ -23,7 +23,7 @@ crates/          GUI-free logic (no GTK anywhere in here)
   ytm-core/      GUI-free: YouTube Music via ytmapi-rs (search/browse/radio/moods) + own home-feed query + yt-dlp stream resolver
                  with URL cache. Own plain types (Track, Album…); `ytm` CLI is the manual test harness
   player-core/   GUI-free: libmpv audio (audio.rs, `Clock` = lock-free position for lyrics), Queue (queue.rs: shuffle order,
-                 repeat, radio trim), Engine actor (engine.rs: resolve→play, retry-once-then-skip, endless radio = one station per queue: seed + continuation token via ytm-core `radio_page`, never re-seeded from its own tail; `Ctx::play_row` + `QueueKind::Songs` + setting `auto_radio` make a row click in a loose list start that song's radio), MPRIS (mpris.rs);
+                 repeat, radio trim), Engine actor (engine.rs: resolve→play, retry-once-then-skip, endless radio = one station per queue: seed + continuation token via ytm-core `radio_page`, never re-seeded from its own tail; `Ctx::play_row` + `QueueKind::Songs` + setting `auto_radio` make a row click in a loose list start that song's radio), MPRIS (mpris.rs; macOS media keys + Now Playing via souvlaki in mpris_macos.rs);
                  `pcli` CLI is the harness (`HARV_AO=null` for headless runs)
 widgets/         GTK widget crates shared by the apps
   lyrics-view/   the lyrics screen widget (GSK nodes, springs, word-level fill); real audio clock
@@ -102,6 +102,17 @@ has `version = "X.Y.Z"`. Before tagging: bump that version (and refresh `Cargo.l
   shaders. Blurred-cover layers + 6 palette blobs + conic fans + streaks + bokeh + line-change bloom + vignette + grain tile. `Scene` carries `flow` (clock sped up by `energy`),
   `energy` (lyric-line density), `pulse` (soft swell per line change). Strength is the global `lyrics_view::set_motion` (Preferences → "Lyrics backdrop motion",
   store key `backdrop_motion`: 0 off / 1 calm / 2 lively).
+- macOS: GTK's display-link frame clock keeps painting hidden windows (Wayland withholds frame callbacks, so Linux is 0 when
+  hidden). `apps/harv/src/occlusion.rs` watches `NSWindow` occlusion and pauses our animations/tickers via
+  `occlusion::follow(widget, f)` / `occlusion::hidden(widget)` (LyricsView/Wavy `set_suspended`, the 250 ms progress timers);
+  with nothing invalidating the window GTK renders nothing. Any new frame-clock tick or periodic timer must do the same.
+  **Never block GdkSurface `render`**: GDK-macOS only shows a new window after its first buffer swap and paces its frame clock
+  on submitted frames — blocking it left the window blank/unfocused at startup and froze it after being covered.
+  GTK 4.24 bug worked around there too: after a Space switch the display-link "frame presented" callback can be lost, leaving
+  the surface's updates frozen (no repaint, clicks look dead) until a resize. A probe (queue_draw, no `after-paint` within
+  500 ms ⇒ stuck) runs on becoming visible, on `NSWorkspaceActiveSpaceDidChangeNotification` and on clicks/key presses, and
+  unsticks via the window's `windowDidChangeScreen:` delegate method (what a resize ends up doing).
+  `HARV_DEBUG_OCCLUSION=1` logs, `HARV_NO_OCCLUSION=1` disables the animation pausing, `HARV_NO_UNSTICK=1` the stall fix.
 - Known cost: ~44 % GPU (relative, iGPU) — the lyrics screen is GTK's weak spot; mitigation ideas are in
   `docs/UI_STACK_COMPARISON.md` §6 (untried).
 

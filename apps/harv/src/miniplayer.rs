@@ -23,6 +23,7 @@ pub fn show(ctx: &Rc<Ctx>) {
 
     let win = adw::Window::builder().title("Harv").default_width(380).default_height(120).css_classes(["mini-window"]).build();
     win.set_size_request(320, 96);
+    crate::occlusion::watch(&win);
     let tv = adw::ToolbarView::new();
     let hb = adw::HeaderBar::new();
     hb.add_css_class("flat");
@@ -77,7 +78,7 @@ pub fn show(ctx: &Rc<Ctx>) {
             if timer.borrow().is_some() { return; }
             let (c, weak, t, update) = (c.clone(), weak.clone(), timer.clone(), update.clone());
             let id = glib::timeout_add_local(Duration::from_millis(250), move || {
-                if !weak.upgrade().is_some_and(|w| w.is_visible()) || !c.is_playing() { t.borrow_mut().take(); return glib::ControlFlow::Break; }
+                if !weak.upgrade().is_some_and(|w| w.is_visible() && !crate::occlusion::hidden(&w)) || !c.is_playing() { t.borrow_mut().take(); return glib::ControlFlow::Break; }
                 update();
                 glib::ControlFlow::Continue
             });
@@ -89,6 +90,7 @@ pub fn show(ctx: &Rc<Ctx>) {
         Rc::new(move || { if let Some(id) = timer.borrow_mut().take() { id.remove(); } })
     };
     { let stop = stop.clone(); win.connect_destroy(move |_| stop()); }
+    { let (c, start, update) = (ctx.clone(), start.clone(), update.clone()); crate::occlusion::follow(&win, move |_, hidden| if !hidden && c.is_playing() { update(); start(); }); }
 
     // Track changes and play state come from the engine; the hook drops itself once the window is gone.
     let last = Rc::new(RefCell::new(String::new()));

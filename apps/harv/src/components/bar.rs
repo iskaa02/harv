@@ -31,7 +31,9 @@ thread_local! { static HUB: Hub = Hub::default(); }
 fn subscribe(w: &gtk::Widget, tick: Rc<dyn Fn()>) {
     let r: glib::WeakRef<gtk::Widget> = glib::WeakRef::new();
     r.set(Some(w));
-    HUB.with(|h| h.subs.borrow_mut().push((r, tick)));
+    HUB.with(|h| h.subs.borrow_mut().push((r, tick.clone())));
+    // Occluded windows stop the ticker (no live subscribers); coming back restarts it.
+    crate::occlusion::follow(w, move |_, hidden| if !hidden && HUB.with(|h| h.playing.get()) { tick(); set_playing(true); });
 }
 
 /// Called on every engine state push: the ticker runs only while playing.
@@ -44,7 +46,7 @@ fn set_playing(on: bool) {
                     let any_mapped = HUB.with(|h| {
                         let mut subs = h.subs.borrow_mut();
                         subs.retain(|(w, _)| w.upgrade().is_some());
-                        let live: Vec<Rc<dyn Fn()>> = subs.iter().filter(|(w, _)| w.upgrade().is_some_and(|w| w.is_mapped())).map(|(_, f)| f.clone()).collect();
+                        let live: Vec<Rc<dyn Fn()>> = subs.iter().filter(|(w, _)| w.upgrade().is_some_and(|w| w.is_mapped() && !crate::occlusion::hidden(&w))).map(|(_, f)| f.clone()).collect();
                         drop(subs);
                         let any = !live.is_empty();
                         for f in live { f(); }
@@ -272,6 +274,7 @@ fn seek(env: &Env, n: &Node) -> gtk::Widget {
     });
     let wavy: Option<Wavy> = (style == "wavy").then(|| {
         let w = Wavy::new();
+        crate::occlusion::follow(&w, |w, hidden| w.set_suspended(hidden));
         w.set_shape(n.float_or("wave_amp", 3.0) as f32, n.float_or("wave_len", 30.0) as f32, n.float_or("wave_stroke", 4.0) as f32, n.int_or("wave_height", 28) as i32);
         w.set_valign(gtk::Align::Center);
         w.add_css_class("bar-wavy");

@@ -1,6 +1,6 @@
 [package]
 name = "harv"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2024"
 license = "GPL-3.0-or-later"
 description = "GTK4 YouTube Music player with an Apple-Music-style synced lyrics screen"
@@ -29,6 +29,13 @@ lyrics-view = { path = "../../widgets/lyrics-view" }
 nucleo-matcher = "0.3.1"
 libc = "0.2"
 dirs = "5"
+
+# macOS: pause rendering while the window is occluded (occlusion.rs).
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+block2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSNotification", "NSOperation", "NSString", "NSObject", "block2"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSWindow", "NSResponder", "NSWorkspace", "objc2-core-foundation"] }
 
 # .deb (cargo-deb) — shared-library deps are detected from the binary
 [package.metadata.deb]

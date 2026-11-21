@@ -149,6 +149,8 @@ pub struct State {
     artist: Option<pango::Layout>,
     hit: Vec<[f32; 4]>,
     tick: Option<gtk::TickCallbackId>,
+    /// Host says the window can't be seen: no frame-clock tick at all (0 CPU) until [`LyricsView::set_suspended`]`(false)`.
+    suspended: bool,
     last: Option<i64>,
     tr: Trans,
     intro: Option<Intro>,
@@ -276,6 +278,7 @@ impl LyricsView {
             artist: None,
             hit: Vec::new(),
             tick: None,
+            suspended: false,
             last: None,
             tr: Trans::default(),
             intro: None,
@@ -451,6 +454,12 @@ impl LyricsView {
     /// Called whenever the layout is recomputed (resize): position overlaid controls from `lay.bar` etc.
     pub fn connect_layout(&self, f: impl Fn(&layout::Layout) + 'static) { self.with(|s| s.on_layout = Some(Rc::new(f))); }
 
+    /// Stop (true) or resume (false) all animation, e.g. while the window is occluded. Resuming picks up from the audio clock.
+    pub fn set_suspended(&self, on: bool) {
+        if self.with(|s| std::mem::replace(&mut s.suspended, on)) == on { return; }
+        if on { if let Some(id) = self.with(|s| { s.last = None; s.tick.take() }) { id.remove(); } } else { self.kick(); }
+    }
+
     /// Tell the view the audio position changed while paused (a seek): redraw once.
     pub fn poke(&self) { self.kick(); }
 
@@ -498,7 +507,7 @@ impl LyricsView {
 
     /// (Re)start the frame-clock tick. It stops itself once everything settles.
     pub fn kick(&self) {
-        if self.with(|s| s.tick.is_some()) {
+        if self.with(|s| s.tick.is_some() || s.suspended) {
             return;
         }
         let id = self.add_tick_callback(|w, clock| {

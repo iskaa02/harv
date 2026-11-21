@@ -22,6 +22,90 @@ say() { printf '\033[1m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[33mwarning:\033[0m %s\n' "$*" >&2; }
 die() { printf '\033[31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 
+# macOS: an app bundle in ~/Applications (Dock, Spotlight, Launchpad, Control Centre's Now Playing) + `harv` symlink in $BIN_DIR.
+# Same flags. Links against Homebrew's gtk4 / libadwaita / mpv, so it runs on this machine only (not a redistributable .app).
+install_macos() {
+  local APP="$HOME/Applications/Harv.app"
+  local LSREG=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+  if [[ "${1:-}" == "--uninstall" ]]; then
+    say "Removing $APP"
+    if [[ -d "$APP" ]]; then "$LSREG" -u "$APP" 2>/dev/null || true; fi
+    rm -rf "$APP"
+    if [[ -L "$BIN_DIR/harv" ]]; then rm -f "$BIN_DIR/harv"; fi
+    say "Done. Your library and settings are untouched."
+    exit 0
+  fi
+  if [[ "${1:-}" != "--no-build" ]]; then
+    export PATH="$HOME/.cargo/bin:$PATH"
+    command -v cargo >/dev/null || die "cargo not found — install Rust with rustup (https://rustup.rs)"
+    command -v pkg-config >/dev/null || die "pkg-config not found (brew install pkgconf)"
+    local missing=() lib
+    for lib in gtk4 libadwaita-1 mpv; do pkg-config --exists "$lib" || missing+=("$lib"); done
+    if (( ${#missing[@]} )); then die "missing development files for: ${missing[*]} — brew install gtk4 libadwaita mpv"; fi
+    say "Building (release) — the first build takes a few minutes"
+    (cd "$ROOT" && cargo build --release -p harv)
+  fi
+  local SRC="$ROOT/target/release/harv"
+  [[ -x "$SRC" ]] || die "$SRC not found — run without --no-build"
+  local VERSION; VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' "$ROOT/apps/harv/Cargo.toml" | head -1)"
+
+  say "Installing $APP"
+  rm -rf "$APP"
+  mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+  install -m755 "$SRC" "$APP/Contents/MacOS/harv"
+
+  # Icon: SVG → iconset → .icns.
+  if command -v rsvg-convert >/dev/null && command -v iconutil >/dev/null; then
+    local tmp s; tmp="$(mktemp -d)"; mkdir -p "$tmp/Harv.iconset"
+    for s in 16 32 128 256 512; do
+      rsvg-convert -w "$s" -h "$s" "$ROOT/packaging/$APP_ID.svg" -o "$tmp/Harv.iconset/icon_${s}x${s}.png"
+      rsvg-convert -w $((s * 2)) -h $((s * 2)) "$ROOT/packaging/$APP_ID.svg" -o "$tmp/Harv.iconset/icon_${s}x${s}@2x.png"
+    done
+    iconutil -c icns "$tmp/Harv.iconset" -o "$APP/Contents/Resources/Harv.icns" || warn "iconutil failed: the app has no icon"
+    rm -rf "$tmp"
+  else
+    warn "rsvg-convert not found (brew install librsvg): the app has no icon"
+  fi
+
+  # Apps started from Finder/Dock get a bare PATH; yt-dlp needs Homebrew's deno / ffmpeg.
+  cat > "$APP/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>Harv</string>
+  <key>CFBundleDisplayName</key><string>Harv</string>
+  <key>CFBundleIdentifier</key><string>$APP_ID</string>
+  <key>CFBundleExecutable</key><string>harv</string>
+  <key>CFBundleIconFile</key><string>Harv</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>$VERSION</string>
+  <key>CFBundleVersion</key><string>$VERSION</string>
+  <key>LSApplicationCategoryType</key><string>public.app-category.music</string>
+  <key>LSMinimumSystemVersion</key><string>11.0</string>
+  <key>NSHighResolutionCapable</key><true/>
+  <key>LSEnvironment</key>
+  <dict>
+    <key>PATH</key><string>/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+</dict>
+</plist>
+PLIST
+  # Ad-hoc signature (Apple Silicon won't run an unsigned/modified binary) and LaunchServices registration.
+  codesign --force --sign - "$APP" >/dev/null 2>&1 || warn "ad-hoc codesign failed"
+  "$LSREG" -f "$APP" 2>/dev/null || true
+
+  mkdir -p "$BIN_DIR"
+  if [[ -e "$BIN_DIR/harv" && ! -L "$BIN_DIR/harv" ]]; then warn "$BIN_DIR/harv is a regular file, not a symlink to the app — left alone (remove it and re-run to link it)"
+  else ln -sf "$APP/Contents/MacOS/harv" "$BIN_DIR/harv"; fi
+
+  command -v yt-dlp >/dev/null || warn "yt-dlp not found — playback needs it (brew install yt-dlp)"
+  command -v deno >/dev/null || warn "deno not found — recent yt-dlp needs a JS runtime for YouTube (brew install deno)"
+  fc-list : family 2>/dev/null | grep -qi "^inter" || warn "the Inter font isn't installed; the UI falls back to a default font"
+  say "Installed. Open Harv from Spotlight / Launchpad / ~/Applications, or run: harv"
+}
+if [[ "$(uname)" == Darwin ]]; then install_macos "$@"; exit 0; fi
+
 refresh_caches() {
   command -v gtk4-update-icon-cache >/dev/null && gtk4-update-icon-cache -q -f -t "$ICON_ROOT" 2>/dev/null || true
   command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache -q -f -t "$ICON_ROOT" 2>/dev/null || true

@@ -9,6 +9,7 @@ mod fonts;
 #[cfg(not(target_os = "linux"))]
 mod fonts { pub fn register() {} }
 mod miniplayer;
+mod occlusion;
 mod icons;
 mod images;
 mod pages;

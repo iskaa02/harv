@@ -5,7 +5,10 @@ mod engine;
 mod fx;
 #[cfg(target_os = "linux")]
 mod mpris;
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "macos")]
+#[path = "mpris_macos.rs"]
+mod mpris;
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 #[path = "mpris_stub.rs"]
 mod mpris;
 mod queue;

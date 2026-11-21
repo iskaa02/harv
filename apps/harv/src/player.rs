@@ -109,6 +109,21 @@ pub fn mini_bar(ctx: &Rc<Ctx>) -> gtk::Widget {
             time.set_label(&if dur > 0.0 { format!("{} / {}", fmt_time(pos as u32), fmt_time(dur as u32)) } else { String::new() });
         })
     };
+    // Started only while the window can be seen; stopped while it's occluded (see occlusion.rs).
+    let start = {
+        let (timer, tick, progress) = (timer.clone(), tick.clone(), progress.clone());
+        Rc::new(move || {
+            if timer.borrow().is_some() || crate::occlusion::hidden(&progress) { return; }
+            let tick = tick.clone();
+            *timer.borrow_mut() = Some(glib::timeout_add_local(Duration::from_millis(250), move || { tick(); glib::ControlFlow::Continue }));
+        })
+    };
+    {
+        let (ctx, timer, tick, start) = (ctx.clone(), timer.clone(), tick.clone(), start.clone());
+        crate::occlusion::follow(&progress, move |_, hidden| {
+            if hidden { if let Some(id) = timer.borrow_mut().take() { id.remove(); } } else if ctx.is_playing() { start(); tick(); }
+        });
+    }
     let last = Rc::new(RefCell::new(String::new()));
     {
         let (ctx2, revealer, timer, tick) = (ctx.clone(), revealer.clone(), timer.clone(), tick.clone());
@@ -129,12 +144,7 @@ pub fn mini_bar(ctx: &Rc<Ctx>) -> gtk::Widget {
             radio_guard.set(true);
             radio.set_active(s.auto_radio);
             radio_guard.set(false);
-            if s.status == Status::Playing {
-                if timer.borrow().is_none() {
-                    let tick = tick.clone();
-                    *timer.borrow_mut() = Some(glib::timeout_add_local(Duration::from_millis(250), move || { tick(); glib::ControlFlow::Continue }));
-                }
-            } else if let Some(id) = timer.borrow_mut().take() { id.remove(); }
+            if s.status == Status::Playing { start(); } else if let Some(id) = timer.borrow_mut().take() { id.remove(); }
             tick();
         });
     }
@@ -176,6 +186,7 @@ fn fullscreen_style(ctx: &Ctx) -> lyrics_core::LyricsStyle {
 
 pub fn now_playing(ctx: &Rc<Ctx>, on_accent: impl Fn([f32; 3]) + 'static, toggle_fullscreen: impl Fn() + 'static) -> NowPlaying {
     let view = LyricsView::new();
+    crate::occlusion::follow(&view, |v, hidden| v.set_suspended(hidden));
     view.set_controls_height(80.0);
     {
         let clock = ctx.engine.clock();
@@ -309,6 +320,21 @@ pub fn now_playing(ctx: &Rc<Ctx>, on_accent: impl Fn([f32; 3]) + 'static, toggle
         })
     };
     let times_timer: Rc<RefCell<Option<glib::SourceId>>> = Rc::default();
+    // Started only while the window can be seen; stopped while it's occluded (see occlusion.rs).
+    let start_times = {
+        let (timer, t, column) = (times_timer.clone(), tick_times.clone(), column.clone());
+        Rc::new(move || {
+            if timer.borrow().is_some() || crate::occlusion::hidden(&column) { return; }
+            let t = t.clone();
+            *timer.borrow_mut() = Some(glib::timeout_add_local(Duration::from_millis(250), move || { t(); glib::ControlFlow::Continue }));
+        })
+    };
+    {
+        let (ctx, timer, t, start) = (ctx.clone(), times_timer.clone(), tick_times.clone(), start_times.clone());
+        crate::occlusion::follow(&column, move |_, hidden| {
+            if hidden { if let Some(id) = timer.borrow_mut().take() { id.remove(); } } else if ctx.is_playing() { start(); t(); }
+        });
+    }
 
     view.connect_layout({
         let column = column.clone();
@@ -356,7 +382,7 @@ pub fn now_playing(ctx: &Rc<Ctx>, on_accent: impl Fn([f32; 3]) + 'static, toggle
             if (vol.value() - s.volume).abs() > 0.01 { vol.set_value(s.volume); }
             guard.set(false);
             if s.status == Status::Playing {
-                if times_timer.borrow().is_none() { let t = tick_times.clone(); *times_timer.borrow_mut() = Some(glib::timeout_add_local(Duration::from_millis(250), move || { t(); glib::ControlFlow::Continue })); }
+                start_times();
             } else if let Some(id) = times_timer.borrow_mut().take() { id.remove(); }
             tick_times();
             view2.set_playing(s.status == Status::Playing);

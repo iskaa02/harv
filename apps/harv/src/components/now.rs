@@ -240,6 +240,7 @@ fn lyrics(env: &Env, node: &Node) -> gtk::Widget {
         accent_active: node.bool_or("accent_active", false),
     };
     let view = LyricsView::new();
+    crate::occlusion::follow(&view, |v, hidden| v.set_suspended(hidden));
     view.set_style(lyrics_style(ctx, &view, &o));
     {
         let clock = ctx.engine.clock();

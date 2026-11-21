@@ -153,7 +153,8 @@ fn lyrics_teaser(ctx: &Rc<Ctx>, node: &Node) -> gtk::Widget {
             glib::timeout_add_local(Duration::from_millis(250), move || {
                 let alive = weak.upgrade().is_some();
                 let mut t = st.borrow_mut();
-                if !alive || t.generation != my || !matches!(ctx.snap.borrow().as_ref().map(|s| s.status), Some(Status::Playing)) {
+                let hidden = weak.upgrade().is_some_and(|w| crate::occlusion::hidden(&w));
+                if !alive || hidden || t.generation != my || !matches!(ctx.snap.borrow().as_ref().map(|s| s.status), Some(Status::Playing)) {
                     if t.generation == my { t.running = false; }
                     return glib::ControlFlow::Break;
                 }
@@ -164,6 +165,10 @@ fn lyrics_teaser(ctx: &Rc<Ctx>, node: &Node) -> gtk::Widget {
         })
     };
 
+    {
+        let (ctx, start_timer, paint) = (ctx.clone(), start_timer.clone(), paint.clone());
+        crate::occlusion::follow(&col, move |_, hidden| if !hidden && ctx.is_playing() { paint(ctx.engine.clock().position()); start_timer(); });
+    }
     let weak = col.downgrade();
     ctx.on_state_while({
         let (st, paint, start_timer, ctx) = (st.clone(), paint.clone(), start_timer.clone(), ctx.clone());

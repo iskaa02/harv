@@ -21,6 +21,7 @@ mod imp {
         pub height: Cell<i32>,
         pub playing: Cell<bool>,
         pub tick: RefCell<Option<gtk::TickCallbackId>>,
+        pub suspended: Cell<bool>,
         pub last: Cell<i64>,
         pub accent: RefCell<Option<gdk::RGBA>>,
         pub dim: RefCell<Option<gdk::RGBA>>,
@@ -29,7 +30,7 @@ mod imp {
 
     impl Default for Wavy {
         fn default() -> Self {
-            Self { progress: Cell::new(0.0), phase: Cell::new(0.0), amp: Cell::new(3.0), wavelength: Cell::new(30.0), stroke: Cell::new(4.0), height: Cell::new(28), playing: Cell::new(false), tick: Default::default(), last: Cell::new(0), accent: Default::default(), dim: Default::default(), seek: Default::default() }
+            Self { progress: Cell::new(0.0), phase: Cell::new(0.0), amp: Cell::new(3.0), wavelength: Cell::new(30.0), stroke: Cell::new(4.0), height: Cell::new(28), playing: Cell::new(false), tick: Default::default(), suspended: Cell::new(false), last: Cell::new(0), accent: Default::default(), dim: Default::default(), seek: Default::default() }
         }
     }
 
@@ -119,9 +120,22 @@ impl Wavy {
 
     /// Animate the wave (true) or hold it still (false). The frame callback exists only while playing.
     pub fn set_playing(&self, on: bool) {
+        if self.imp().playing.replace(on) == on { return; }
+        self.sync_tick();
+    }
+
+    /// Stop (true) / resume (false) the wave animation regardless of playing, e.g. while the window is occluded.
+    pub fn set_suspended(&self, on: bool) {
+        if self.imp().suspended.replace(on) == on { return; }
+        self.sync_tick();
+    }
+
+    /// The frame callback runs exactly while playing and not suspended.
+    fn sync_tick(&self) {
         let i = self.imp();
-        if i.playing.replace(on) == on { return; }
-        if on {
+        let want = i.playing.get() && !i.suspended.get();
+        if want == i.tick.borrow().is_some() { return; }
+        if want {
             i.last.set(0);
             let id = self.add_tick_callback(|w, clock| {
                 let i = w.imp();

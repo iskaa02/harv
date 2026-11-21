@@ -1,4 +1,4 @@
-//! Non-Linux stand-in for the MPRIS service (D-Bus): same API, does nothing. A macOS Now Playing / media-key backend would replace this.
+//! Stand-in for the MPRIS service on platforms other than Linux (mpris.rs) and macOS (mpris_macos.rs): same API, does nothing.
 
 use crate::engine::{Engine, Snapshot};
 use anyhow::Result;
